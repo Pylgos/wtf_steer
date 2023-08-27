@@ -46,10 +46,6 @@ void can_push(const CANMessage& msg) {
   can_write_buffer.push(msg);
 }
 
-Controller controller{can_push};
-
-Steer4WController steer_controller{PidGain{}, PidGain{}, 0.045, Vec2f(0.5, 0.5), 1s};
-
 void flush_can_buffer() {
   CANMessage buffered_msg;
   while (can_write_buffer.peek(buffered_msg)) {
@@ -61,13 +57,15 @@ void flush_can_buffer() {
   }
 }
 
+Controller controller{can_push};
+
+Steer4WController steer_controller{PidGain{}, PidGain{}, 0.045, Vec2f(0.5, 0.5), 1s};
+
 void write_can() {
   const auto fp_msg = first_penguin_array.to_msg();
   if (!can1.write(fp_msg)) {
     printf("failed to write first penguin msg\n");
   }
-
-  flush_can_buffer();
 
   const auto c620_msgs = c620_array.to_msgs();
   if (!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
@@ -154,14 +152,15 @@ int main() {
       } break;
 
       case Feedback::CurrentState::RUNNING: {
-        Vec2f linear_vel = controller.get_tgt_linear_vel();
-        float angular_vel = controller.get_tgt_ang_vel();
+        steer_controller.set_tgt_vel(
+          controller.get_tgt_linear_vel(),
+          controller.get_tgt_ang_vel());
 
-        steer_controller.set_tgt_vel(linear_vel, angular_vel);
         steer_controller.update(
-          {front_left_drive_motor->get_ang_vel(), rear_left_drive_motor->get_ang_vel(), rear_right_drive_motor->get_ang_vel(), front_right_drive_motor->get_ang_vel()},
-          {front_left_steer_enc.get_angle(), rear_left_steer_enc.get_angle(), rear_right_steer_enc.get_angle(), front_right_steer_enc.get_angle()},
+          {drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(), drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
+          {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(), steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
           dt);
+
         auto drive_cmd = steer_controller.get_drive_outputs();
         auto steer_cmd = steer_controller.get_steer_outputs();
 
@@ -178,8 +177,8 @@ int main() {
 
     write_can();
 
-    while (loop_period > dt_timer.elapsed_time()) {
+    do {
       flush_can_buffer();
-    }
+    } while (loop_period > dt_timer.elapsed_time());
   }
 }
