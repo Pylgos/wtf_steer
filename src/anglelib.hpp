@@ -68,11 +68,11 @@ struct Angle {
     return Angle<Rep>(radians);
   }
 
-  constexpr Rep deg() {
+  constexpr Rep deg() const {
     return value * Rep(360 / (2 * PI));
   }
 
-  constexpr Rep rad() {
+  constexpr Rep rad() const {
     return value;
   }
 
@@ -188,11 +188,11 @@ struct Direction {
     return Direction<Rep>(atan2(y, x));
   }
 
-  constexpr Rep deg() {
+  constexpr Rep deg() const {
     return value * Rep(360 / (2 * M_PI));
   }
 
-  constexpr Rep rad() {
+  constexpr Rep rad() const {
     return value;
   }
 

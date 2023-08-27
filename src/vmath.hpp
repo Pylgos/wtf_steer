@@ -11,80 +11,80 @@ struct Vec2 {
   T x{0};
   T y{0};
 
-  Vec2(T x_, T y_): x{x_}, y{y_} {}
-  Vec2(): x{0}, y{0} {}
+  constexpr Vec2(T x_, T y_): x{x_}, y{y_} {}
+  constexpr Vec2(): x{0}, y{0} {}
 
-  T length2() {
+  constexpr T length2() const {
     return x * x + y * y;
   }
 
-  T length() {
+  constexpr T length() const {
     using std::sqrt;
     return sqrt(length2());
   }
 
-  Vec2& normalize() {
+  constexpr Vec2& normalize() {
     float len_inv = T(1) / length();
     x *= len_inv;
     y *= len_inv;
     return *this;
   }
 
-  Vec2& operator+=(Vec2 rhs) {
+  constexpr Vec2& operator+=(Vec2 rhs) {
     x += rhs.x;
     y += rhs.y;
     return *this;
   }
 
-  Vec2& operator-=(Vec2 rhs) {
+  constexpr Vec2& operator-=(Vec2 rhs) {
     x -= rhs.x;
     y -= rhs.y;
     return *this;
   }
 
-  Vec2& operator*=(float rhs) {
+  constexpr Vec2& operator*=(float rhs) {
     x *= rhs;
     y *= rhs;
     return *this;
   }
 
-  Vec2& operator/=(float rhs) {
+  constexpr Vec2& operator/=(float rhs) {
     x /= rhs;
     y /= rhs;
     return *this;
   }
 
-  Vec2 operator+(Vec2 rhs) const {
+  constexpr Vec2 operator+(Vec2 rhs) const {
     Vec2 result{*this};
     result += rhs;
     return result;
   }
 
-  Vec2 operator-(Vec2 rhs) const {
+  constexpr Vec2 operator-(Vec2 rhs) const {
     Vec2 result{*this};
     result -= rhs;
     return result;
   }
 
-  Vec2 operator*(float rhs) const {
+  constexpr Vec2 operator*(float rhs) const {
     Vec2 result{*this};
     result *= rhs;
     return result;
   }
 
-  Vec2 operator/(float rhs) const {
+  constexpr Vec2 operator/(float rhs) const {
     Vec2 result{*this};
     result /= rhs;
     return result;
   }
 
-  Vec2 normalized() const {
+  constexpr Vec2 normalized() const {
     Vec2 result{*this};
     result.normalize();
     return result;
   }
 
-  Vec2 rotated(anglelib::Angle<T> angle) const {
+  constexpr Vec2 rotated(anglelib::Angle<T> angle) const {
     const T s = anglelib::sin(angle);
     const T c = anglelib::cos(angle);
     return Vec2(
@@ -93,7 +93,7 @@ struct Vec2 {
     );
   }
 
-  float dot(Vec2 rhs) {
+  constexpr float dot(Vec2 rhs) const {
     return x * rhs.x + y * rhs.y;
   }
 };
@@ -104,14 +104,14 @@ struct Vec3 {
   T y{0};
   T z{0};
 
-  Vec3(T x_, T y_, T z_): x{x_}, y{y_}, z{z_} {}
-  Vec3(): x{0}, y{0}, z{0} {}
+  constexpr Vec3(T x_, T y_, T z_): x{x_}, y{y_}, z{z_} {}
+  constexpr Vec3(): x{0}, y{0}, z{0} {}
 
-  T length2() {
+  constexpr T length2() const {
     return x * x + y * y + z * z;
   }
 
-  T length() {
+  constexpr T length() const {
     using std::sqrt;
     return sqrt(length2());
   }
@@ -144,35 +144,35 @@ struct Vec3 {
     return *this;
   }
 
-  Vec3 operator+(Vec3 rhs) const {
+  constexpr Vec3 operator+(Vec3 rhs) const {
     Vec3 result{*this};
     result += rhs;
     return result;
   }
 
-  Vec3 operator-(Vec3 rhs) const {
+  constexpr Vec3 operator-(Vec3 rhs) const {
     Vec3 result{*this};
     result -= rhs;
     return result;
   }
 
-  Vec3 operator*(float rhs) const {
+  constexpr Vec3 operator*(float rhs) const {
     Vec3 result{*this};
     result *= rhs;
     return result;
   }
 
-  Vec3 operator/(float rhs) const {
+  constexpr Vec3 operator/(float rhs) const {
     Vec3 result{*this};
     result /= rhs;
     return result;
   }
 
-  float dot(Vec3 rhs) const {
+  constexpr float dot(Vec3 rhs) const {
     return Vec3(x * rhs.x + y * rhs.y + z * rhs.z);
   }
 
-  Vec3 cross(Vec3 rhs) const {
+  constexpr Vec3 cross(Vec3 rhs) const {
     return Vec3{
       y*rhs.z - z*rhs.y,
       z*rhs.x - x*rhs.z,
