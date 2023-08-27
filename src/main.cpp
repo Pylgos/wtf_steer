@@ -14,6 +14,12 @@
 using namespace anglelib;
 using namespace vmath;
 
+
+static constexpr chrono::microseconds loop_period = 1ms;
+static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
+static constexpr float wheel_radius = 0.045;
+
+
 BufferedSerial pc{USBTX, USBRX, 115200};
 Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
 CAN can1{PA_11, PA_12, (int)1e6};
@@ -59,7 +65,7 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, 0.045, Vec2f(0.5, 0.5), 1s};
+Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.5, 0.5)};
 
 void write_can() {
   const auto fp_msg = first_penguin_array.to_msg();
@@ -117,22 +123,20 @@ int main() {
     steer_controller.set_steer_offset(idx, offset);
   });
 
-  front_left_drive_motor->set_gear_ratio(-1.0 / 19.0);
-  rear_left_drive_motor->set_gear_ratio(-1.0 / 19.0);
-  rear_right_drive_motor->set_gear_ratio(1.0 / 19.0);
-  front_right_drive_motor->set_gear_ratio(1.0 / 19.0);
+  front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
 
   for (const auto mot : steer_motors) {
     mot->set_invert(true);
   }
 
-  const chrono::microseconds loop_period = 1ms;
-
   timer.start();
 
   Timer dt_timer;
   dt_timer.start();
-  ThisThread::sleep_for(1ms);
+  ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
 
   while (true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();

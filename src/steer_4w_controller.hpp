@@ -9,7 +9,7 @@ class Steer4WController {
   using Vec3 = vmath::Vec3f;
   using Angle = anglelib::Anglef;
 public:
-  Steer4WController(PidGain steer_gain, PidGain velocity_gain, float wheel_radius, Vec2 displacement, std::chrono::nanoseconds unwind_wait_time) :
+  Steer4WController(PidGain steer_gain, PidGain velocity_gain, float wheel_radius, Vec2 displacement) :
     units_{{
       SteerUnitController{steer_gain, velocity_gain, wheel_radius},
       SteerUnitController{steer_gain, velocity_gain, wheel_radius},
