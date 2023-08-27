@@ -106,7 +106,7 @@ int main() {
   controller.on_reset_pid([](){
     printf("pid reset\n");
     steer_controller.set_steer_gain(controller.get_steer_gain());
-    steer_controller.set_velocity_gain(controller.get_velocity_gain());
+    steer_controller.set_drive_gain(controller.get_drive_gain());
     steer_controller.reset();
   });
 

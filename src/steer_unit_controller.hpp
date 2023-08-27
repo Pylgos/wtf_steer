@@ -12,8 +12,8 @@ class SteerUnitController {
   using Direction = anglelib::Directionf;
 
 public:
-  SteerUnitController(PidGain steer_gain, PidGain velocity_gain, float wheel_radius)
-    : steer_controller_{steer_gain}, vel_controller_{velocity_gain}, wheel_radius_{wheel_radius}
+  SteerUnitController(PidGain steer_gain, PidGain drive_gain, float wheel_radius)
+    : steer_controller_{steer_gain}, drive_controller_{drive_gain}, wheel_radius_{wheel_radius}
   {}
 
   void set_tgt_vel(Vec2 vel) {
@@ -25,9 +25,9 @@ public:
 
     if (tgt_vel_.length() < 0.1) {
       steer_controller_.set_tgt_direction(last_tgt_dir_);
-      vel_controller_.set_target(0.0);
+      drive_controller_.set_target(0.0);
       steer_controller_.update(present_steer_angle, dt);
-      vel_controller_.update(present_drive_ang_vel, dt);
+      drive_controller_.update(present_drive_ang_vel, dt);
       return;
     }
 
@@ -37,26 +37,26 @@ public:
     Angle tgt_backward_angle = present_steer_angle.closest_angle_of(tgt_backward_dir);
     if ((tgt_angle - present_steer_angle).abs() < (tgt_backward_angle - present_steer_angle).abs()) {
       steer_controller_.set_tgt_direction(tgt_dir);
-      vel_controller_.set_target(tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(tgt_vel_.length() / wheel_radius_);
       last_tgt_dir_ = tgt_dir;
     } else {
       steer_controller_.set_tgt_direction(tgt_backward_dir);
-      vel_controller_.set_target(-tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(-tgt_vel_.length() / wheel_radius_);
       last_tgt_dir_ = tgt_backward_dir;
     }
 
     steer_controller_.update(present_steer_angle, dt);
-    vel_controller_.update(present_drive_ang_vel, dt);
+    drive_controller_.update(present_drive_ang_vel, dt);
   }
 
   void unwind(float present_drive_ang_vel, Angle present_steer_angle, std::chrono::nanoseconds dt) {
     steer_controller_.unwind(present_steer_angle, dt);
-    vel_controller_.set_target(0.0);;
-    vel_controller_.update(present_drive_ang_vel, dt);
+    drive_controller_.set_target(0.0);;
+    drive_controller_.update(present_drive_ang_vel, dt);
   }
 
   float get_drive_output() {
-    return vel_controller_.get_output();
+    return drive_controller_.get_output();
   }
 
   float get_steer_output() {
@@ -67,13 +67,13 @@ public:
     steer_controller_.set_gain(gain);
   }
 
-  void set_velocity_gain(PidGain gain) {
-    vel_controller_.set_gain(gain);
+  void set_drive_gain(PidGain gain) {
+    drive_controller_.set_gain(gain);
   }
 
   void reset() {
     steer_controller_.reset();
-    vel_controller_.reset();
+    drive_controller_.reset();
   }
 
   Vec2 get_odom_vel() {
@@ -82,7 +82,7 @@ public:
 
 private:
   SteerAngleController steer_controller_;
-  PidController vel_controller_;
+  PidController drive_controller_;
   float wheel_radius_;
   Vec2 tgt_vel_;
   Vec2 odom_vel_;

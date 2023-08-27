@@ -9,12 +9,12 @@ class Steer4WController {
   using Vec3 = vmath::Vec3f;
   using Angle = anglelib::Anglef;
 public:
-  Steer4WController(PidGain steer_gain, PidGain velocity_gain, float wheel_radius, Vec2 displacement) :
+  Steer4WController(PidGain steer_gain, PidGain drive_gain, float wheel_radius, Vec2 displacement) :
     units_{{
-      SteerUnitController{steer_gain, velocity_gain, wheel_radius},
-      SteerUnitController{steer_gain, velocity_gain, wheel_radius},
-      SteerUnitController{steer_gain, velocity_gain, wheel_radius},
-      SteerUnitController{steer_gain, velocity_gain, wheel_radius}
+      SteerUnitController{steer_gain, drive_gain, wheel_radius},
+      SteerUnitController{steer_gain, drive_gain, wheel_radius},
+      SteerUnitController{steer_gain, drive_gain, wheel_radius},
+      SteerUnitController{steer_gain, drive_gain, wheel_radius}
     }} {
     displacements_[0] = Vec2{displacement.x, displacement.y};
     displacements_[1] = Vec2{-displacement.x, displacement.y};
@@ -75,9 +75,9 @@ public:
     }
   }
 
-  void set_velocity_gain(PidGain gain) {
+  void set_drive_gain(PidGain gain) {
     for (auto&& u : units_) {
-      u.set_velocity_gain(gain);
+      u.set_drive_gain(gain);
     }
   }
 

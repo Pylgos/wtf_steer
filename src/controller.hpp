@@ -36,13 +36,13 @@ public:
         printf("set param\n");
         auto arg = cmd.set_param;
         switch (arg.id) {
-          case ParamId::DRIVE_KP: asgn(vel_gain_.kp, arg.value); break;
-          case ParamId::DRIVE_KI: asgn(vel_gain_.ki, arg.value); break;
-          case ParamId::DRIVE_KD: asgn(vel_gain_.kd, arg.value); break;
-          case ParamId::DRIVE_MAX: asgn(vel_gain_.max, arg.value); break;
-          case ParamId::DRIVE_MIN: asgn(vel_gain_.min, arg.value); break;
-          case ParamId::DRIVE_ANTIWINDUP: asgn(vel_gain_.anti_windup, arg.value); break;
-          case ParamId::DRIVE_USE_VELOCITY_FOR_D_TERM: asgn(vel_gain_.use_velocity_for_d_term, arg.value); break;
+          case ParamId::DRIVE_KP: asgn(drive_gain_.kp, arg.value); break;
+          case ParamId::DRIVE_KI: asgn(drive_gain_.ki, arg.value); break;
+          case ParamId::DRIVE_KD: asgn(drive_gain_.kd, arg.value); break;
+          case ParamId::DRIVE_MAX: asgn(drive_gain_.max, arg.value); break;
+          case ParamId::DRIVE_MIN: asgn(drive_gain_.min, arg.value); break;
+          case ParamId::DRIVE_ANTIWINDUP: asgn(drive_gain_.anti_windup, arg.value); break;
+          case ParamId::DRIVE_USE_VELOCITY_FOR_D_TERM: asgn(drive_gain_.use_velocity_for_d_term, arg.value); break;
           case ParamId::DRIVE_PID_MAX: break;
 
           case ParamId::STEER_KP: asgn(steer_gain_.kp, arg.value); break;
@@ -144,7 +144,7 @@ public:
   }
 
   PidGain get_steer_gain() { return steer_gain_; }
-  PidGain get_velocity_gain() { return vel_gain_; }
+  PidGain get_drive_gain() { return drive_gain_; }
 
 private:
   uint16_t can_id_;
@@ -156,7 +156,7 @@ private:
   Vec2 tgt_linear_vel_ = {0.0, 0.0};
   float tgt_ang_vel_ = 0.0;
   PidGain steer_gain_{};
-  PidGain vel_gain_{};
+  PidGain drive_gain_{};
   Vec2 odom_linear_vel_{0, 0};
   float odom_ang_vel_ = 0;
 
