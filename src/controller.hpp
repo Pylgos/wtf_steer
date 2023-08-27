@@ -43,7 +43,6 @@ public:
           case ParamId::DRIVE_MIN: asgn(drive_gain_.min, arg.value); break;
           case ParamId::DRIVE_ANTIWINDUP: asgn(drive_gain_.anti_windup, arg.value); break;
           case ParamId::DRIVE_USE_VELOCITY_FOR_D_TERM: asgn(drive_gain_.use_velocity_for_d_term, arg.value); break;
-          case ParamId::DRIVE_PID_MAX: break;
 
           case ParamId::STEER_KP: asgn(steer_gain_.kp, arg.value); break;
           case ParamId::STEER_KI: asgn(steer_gain_.ki, arg.value); break;
@@ -52,7 +51,6 @@ public:
           case ParamId::STEER_MIN: asgn(steer_gain_.min, arg.value); break;
           case ParamId::STEER_ANTIWINDUP: asgn(steer_gain_.anti_windup, arg.value); break;
           case ParamId::STEER_USE_VELOCITY_FOR_D_TERM: asgn(steer_gain_.use_velocity_for_d_term, arg.value); break;
-          case ParamId::STEER_PID_MAX: break;
 
           case ParamId::STEER0_OFFSET: call(on_steer_offset_, 0, Angle::from_rad(arg.value.float_value)); break;
           case ParamId::STEER1_OFFSET: call(on_steer_offset_, 1, Angle::from_rad(arg.value.float_value)); break;
