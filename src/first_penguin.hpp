@@ -1,0 +1,59 @@
+#ifndef FIRST_PENGUIN_H
+#define FIRST_PENGUIN_H
+
+#include <mbed.h>
+
+class FirstPenguin {
+public:
+  void set_invert(bool invert) {
+    scale_ = invert ? -1 : 1;
+  }
+
+  void set_raw_duty(int16_t duty) { raw_duty_ = duty; }
+  int16_t get_raw_duty() const { return raw_duty_; }
+
+  void set_duty(const float duty) {
+    raw_duty_ = std::max(std::min(duty, 1.0f), -1.0f) * 16384 * scale_;
+  }
+  float get_duty() const { return raw_duty_ * (1.0f / 16384.0f) / scale_; }
+
+private:
+  int8_t scale_ = 1;
+  int16_t raw_duty_ = 0;
+};
+
+
+class FirstPenguinArray {
+public:
+  FirstPenguinArray(uint16_t base_can_id) : base_can_id_{base_can_id} {}
+
+  FirstPenguin& operator[](int index) {
+    return ary_[index];
+  }
+
+  const FirstPenguin& operator[](int index) const {
+    return ary_[index];
+  }
+
+  CANMessage to_msg() const {
+    CANMessage msg;
+    msg.id = base_can_id_;
+    msg.len = 8;
+    for (size_t i = 0; i < 4; i++) {
+      msg.data[i * 2] = ary_[i].get_raw_duty() & 0xff;
+      msg.data[i * 2 + 1] = (ary_[i].get_raw_duty() >> 8) & 0xff;
+    }
+    return msg;
+  }
+
+  void parse_packaet(const CANMessage& msg) {
+    // TODO:
+  }
+
+private:
+  uint16_t base_can_id_;
+  std::array<FirstPenguin, 4> ary_;
+};
+
+
+#endif
