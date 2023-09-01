@@ -42,6 +42,23 @@ public:
     odom_linear_vel_ = linear_vel;
   }
 
+  void start_unwinding() {
+    for (auto& unit : units_) {
+      unit.on_unwound(std::bind(&Steer4WController::on_unit_unwound, this, std::placeholders::_1));
+      unit.start_unwinding();
+    }
+  }
+
+  void stop_unwinding() {
+    for (auto& unit : units_) {
+      unit.stop_unwinding();
+    }
+  }
+
+  void on_unwound(std::function<void(bool)> f) {
+    on_unwound_ = f;
+  }
+
   void set_tgt_vel(Vec2 linear, float angular) {
     Vec3 ang_vec(0, 0, angular);
     for (size_t i = 0; i < units_.size(); i++) {
@@ -100,12 +117,31 @@ public:
   }
 
 private:
+  void on_unit_unwound(bool success) {
+    if (success) {
+      unwound_success_count_++;
+      if (unwound_success_count_ != units_.size()) {
+        return;
+      }
+      if (on_unwound_) on_unwound_(true);
+    } else {
+      if (on_unwound_) on_unwound_(false);
+    }
+    unwound_success_count_ = 0;
+    for (auto& unit : units_) {
+      unit.on_unwound(nullptr);
+    }
+  }
+
   std::array<SteerUnitController, 4> units_;
   std::array<Angle, 4> offset_ = {};
   std::array<Vec2, 4> displacements_;
 
   Vec2 odom_linear_vel_{0, 0};
   float odom_ang_vel_ = 0;
+
+  std::function<void(bool)> on_unwound_ = nullptr;
+  int unwound_success_count_ = 0;
 };
 
 

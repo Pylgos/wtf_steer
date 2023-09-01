@@ -2,6 +2,7 @@
 #define STEER_ANGLE_CONTROLLER_HPP
 #include <anglelib.hpp>
 #include <pid_controller.hpp>
+#include <functional>
 
 class SteerAngleController {
   using Angle = anglelib::Anglef;
@@ -11,7 +12,17 @@ public:
   SteerAngleController(PidGain gain, Angle home_angle = Angle::zero): pid_{gain}, home_angle_{home_angle} {}
 
   void update(Angle present, std::chrono::nanoseconds dt) {
-    Angle target_angle = present.closest_angle_of(target_dir_);
+    if (unwinding_ && is_unwound(present)) {
+      unwinding_ = false;
+      if (on_unwound_) on_unwound_(true);
+    }
+
+    Angle target_angle;
+    if (unwinding_) {
+      target_angle = home_angle_;
+    } else {
+      target_angle = present.closest_angle_of(target_dir_);
+    }
     pid_.set_target(target_angle.rad());
     pid_.update(present.rad(), dt);
   }
@@ -20,9 +31,25 @@ public:
     target_dir_ = dir;
   }
 
-  void unwind(Angle present, std::chrono::nanoseconds dt) {
-    pid_.set_target(home_angle_.rad());
-    pid_.update(present.rad(), dt);
+  void start_unwinding() {
+    unwinding_ = true;
+  }
+
+  void stop_unwinding() {
+    if (unwinding_ && on_unwound_) on_unwound_(false);
+    unwinding_ = false;
+  }
+
+  void on_unwound(std::function<void(bool)> f) {
+    on_unwound_ = f;
+  }
+
+  bool is_unwound(Angle present) {
+    return (home_angle_ - present).abs() < Angle::from_deg(10);
+  }
+
+  bool is_unwinding() {
+    return unwinding_;
   }
 
   float get_output() {
@@ -41,6 +68,8 @@ private:
   PidController pid_;
   Direction target_dir_;
   Angle home_angle_;
+  std::function<void(bool)> on_unwound_ = nullptr;
+  bool unwinding_ = false;
 };
 
 #endif

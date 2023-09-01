@@ -22,14 +22,17 @@ public:
 
   void update(float present_drive_ang_vel, Angle present_steer_angle, std::chrono::nanoseconds dt) {
     odom_vel_ = Vec2(present_drive_ang_vel * wheel_radius_, 0).rotated(present_steer_angle);
+    bool is_stopping = tgt_vel_.length() < 0.1;
 
-    if (tgt_vel_.length() < 0.1) {
+    if (is_stopping) {
       steer_controller_.set_tgt_direction(last_tgt_dir_);
       drive_controller_.set_target(0.0);
       steer_controller_.update(present_steer_angle, dt);
       drive_controller_.update(present_drive_ang_vel, dt);
       return;
     }
+
+    stop_unwinding();
 
     Direction tgt_dir = Direction::from_xy(tgt_vel_.x, tgt_vel_.y);
     Direction tgt_backward_dir = tgt_dir + Angle::half_turn;
@@ -49,10 +52,25 @@ public:
     drive_controller_.update(present_drive_ang_vel, dt);
   }
 
-  void unwind(float present_drive_ang_vel, Angle present_steer_angle, std::chrono::nanoseconds dt) {
-    steer_controller_.unwind(present_steer_angle, dt);
-    drive_controller_.set_target(0.0);;
-    drive_controller_.update(present_drive_ang_vel, dt);
+  void start_unwinding() {
+    steer_controller_.start_unwinding();
+    last_tgt_dir_ = Direction::zero;
+  }
+
+  void stop_unwinding() {
+    steer_controller_.stop_unwinding();
+  }
+
+  void on_unwound(std::function<void(bool)> f) {
+    steer_controller_.on_unwound(f);
+  }
+
+  bool is_unwound(Angle present_steer_angle) {
+    return steer_controller_.is_unwound(present_steer_angle);
+  }
+
+  bool is_unwinding() {
+    return steer_controller_.is_unwinding();
   }
 
   float get_drive_output() {

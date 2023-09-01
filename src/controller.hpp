@@ -74,6 +74,7 @@ public:
 
       case Command::Tag::RESET_PID: call(on_reset_pid_); break;
       case Command::Tag::ACTIVATE: activate(); break;
+      case Command::Tag::UNWIND_STEER: call(on_unwind_); break;
     }
 
     return true;
@@ -128,6 +129,10 @@ public:
     on_steer_offset_ = f;
   }
 
+  void on_unwind(std::function<void()> f) {
+    on_unwind_ = f;
+  }
+
   bool is_timeout(std::chrono::microseconds now) {
     return now - last_cmd_received_ > std::chrono::milliseconds(100);
   }
@@ -143,6 +148,18 @@ public:
 
   PidGain get_steer_gain() { return steer_gain_; }
   PidGain get_drive_gain() { return drive_gain_; }
+
+  void publish_steer_unwind_done() {
+    CANMessage msg;
+    msg.id = Feedback::ID;
+    msg.len = 8;
+    msg.format = CANStandard;
+    msg.type = CANData;
+    Feedback fb;
+    fb.tag = Feedback::Tag::STEER_UNWIND_DONE;
+    memcpy(msg.data, &fb, sizeof(fb));
+    can_write_impl_(msg);
+  }
 
 private:
   uint16_t can_id_;
@@ -204,6 +221,7 @@ private:
   std::function<void()> on_activation_ = nullptr;
   std::function<void()> on_deactivation_ = nullptr;
   std::function<void(int idx, anglelib::Anglef offset)> on_steer_offset_ = nullptr;
+  std::function<void()> on_unwind_ = nullptr;
 };
 
 #endif
