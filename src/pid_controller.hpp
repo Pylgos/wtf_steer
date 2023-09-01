@@ -37,7 +37,7 @@ public:
       return;
     }
     float error = target_ - present;
-    float k = error * gain_.kp;
+    float p = error * gain_.kp;
     integral_ += error * dt_sec;
     float i = integral_ * gain_.ki;
     float d = 0.0;
@@ -47,10 +47,13 @@ public:
       d = ((error - prev_error_) / dt_sec) * gain_.kd;
     }
     prev_error_ = error;
-    float output = k + i + d;
+    float output = p + i + d;
     float output_saturated = std::min(std::max(output, gain_.min), gain_.max);
     if (gain_.anti_windup && gain_.ki != 0) {
-      integral_ -= (output - output_saturated) / gain_.ki;
+      float integral_max = gain_.max / gain_.ki;
+      float integral_min = gain_.min / gain_.ki;
+      integral_ = std::min(std::max(integral_, integral_min), integral_max);
+      // integral_ -= (output - output_saturated) / gain_.ki;
     }
     output_ = output_saturated;
   }
