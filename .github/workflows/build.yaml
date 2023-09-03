@@ -17,6 +17,8 @@ jobs:
           python-version: '3.9'
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
+      - name: Install python dependencies
+        run: pip install intelhex future prettytable jsonschema
 
       - name: Build PlatformIO Project
         run: pio run
