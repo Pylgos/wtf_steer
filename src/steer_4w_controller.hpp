@@ -141,7 +141,7 @@ private:
   float odom_ang_vel_ = 0;
 
   std::function<void(bool)> on_unwound_ = nullptr;
-  int unwound_success_count_ = 0;
+  size_t unwound_success_count_ = 0;
 };
 
 
