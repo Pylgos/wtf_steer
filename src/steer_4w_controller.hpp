@@ -30,12 +30,12 @@ public:
     float ang_vel = 0;
     Vec2 linear_vel{0, 0};
     const float multiplier = 1.0f / units_.size();
-    const Vec3 rot_90 = Vec3(0, 0, anglelib::PI/2);
+    const Vec3 rot_90 = Vec3(0, 0, 1);
     for (size_t i = 0; i < units_.size(); i++) {
       Vec2 v = units_[i].get_odom_vel();
       Vec2 n = displacements_[i].normalized();
       Vec3 t = rot_90.cross(Vec3(n.x, n.y, 0));
-      ang_vel += Vec2(t.x, t.y).dot(v) * multiplier;
+      ang_vel += Vec2(t.x, t.y).dot(v) * multiplier / displacements_[i].length();
       linear_vel += v * multiplier;
     }
     odom_ang_vel_ = ang_vel;

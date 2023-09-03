@@ -17,7 +17,7 @@ using namespace vmath;
 
 static constexpr chrono::microseconds loop_period = 1ms;
 static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
-static constexpr float wheel_radius = 0.045;
+static constexpr float wheel_radius = 0.05;
 
 
 BufferedSerial pc{USBTX, USBRX, 115200};
@@ -42,7 +42,7 @@ const std::array<FirstPenguin*, 4> steer_motors = {front_left_steer_motor, rear_
 
 Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
 Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
-Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(50.40)};
+Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
 Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
 std::array<Amt21*, 4> steer_encoders = {&front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -65,7 +65,7 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.5, 0.5)};
+Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
 
 void write_can() {
   const auto fp_msg = first_penguin_array.to_msg();
@@ -75,7 +75,7 @@ void write_can() {
 
   const auto c620_msgs = c620_array.to_msgs();
   if (!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
-    printf("failed to write c620 msg\n");
+    // printf("failed to write c620 msg\n");
   }
 }
 
@@ -160,6 +160,11 @@ int main() {
       continue;
     }
     controller.update(timer.elapsed_time());
+
+    // for (size_t i = 0; i < 4; i++) {
+    //   printf(" %f", steer_encoders[i]->get_angle().deg());
+    // }
+    // printf("\n");
 
     switch (controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
