@@ -2,6 +2,7 @@
 #define CAN_BRIDGE_PROTOCOL_H
 
 #include <stdint.h>
+
 #include <array>
 
 #define PROTOCOL_PACKED __attribute__((packed))
@@ -71,7 +72,7 @@ struct Command {
   Tag tag;
 
   struct GetParam {
-      ParamId id;
+    ParamId id;
   } PROTOCOL_PACKED;
 
   struct SetParam {
@@ -79,33 +80,33 @@ struct Command {
     ParamValue value;
   } PROTOCOL_PACKED;
   struct SetTargetVelocity {
-    int16_t vx; // 前方向の速度 [mm/s]
-    int16_t vy; // 左方向の速度 [mm/s]
-    int16_t ang_vel; // 上から見て半時計回り方向の角速度 [mrad/s] (ミリラジアン毎秒)
+    int16_t vx;       // 前方向の速度 [mm/s]
+    int16_t vy;       // 左方向の速度 [mm/s]
+    int16_t ang_vel;  // 上から見て半時計回り方向の角速度 [mrad/s] (ミリラジアン毎秒)
   } PROTOCOL_PACKED;
 
   struct SetDonfanCmd {
-    int8_t dir; // 1: 正転、 0: 停止、 -1: 逆転
+    int8_t dir;  // 1: 正転、 0: 停止、 -1: 逆転
   } PROTOCOL_PACKED;
 
   struct SetExpanderCmd {
-    int16_t cmd; // +展開
+    int16_t cmd;  // +展開
   } PROTOCOL_PACKED;
 
   struct SetCollectorCmd {
-    bool enable; // trueなら回収開始、falseなら回収停止
+    bool enable;  // trueなら回収開始、falseなら回収停止
   } PROTOCOL_PACKED;
 
   struct SetArmAngle {
-    int16_t angle; // 角度 初期位置が0 前方向が+ [mrad]
+    int16_t angle;  // 角度 初期位置が0 前方向が+ [mrad]
   } PROTOCOL_PACKED;
 
   struct SetArmLength {
-    int16_t length; // 長さ 初期位置が0 展開方向が+ [mm]
+    int16_t length;  // 長さ 初期位置が0 展開方向が+ [mm]
   } PROTOCOL_PACKED;
 
   struct SetLargeWheelCmd {
-    int16_t cmd; // +正転 -逆転 32767が最大
+    int16_t cmd;  // +正転 -逆転 32767が最大
   } PROTOCOL_PACKED;
 
   union {
@@ -166,9 +167,9 @@ struct Feedback {
   } PROTOCOL_PACKED;
 
   struct Odometry {
-    int16_t vx; // 前方向の速度 [mm/s]
-    int16_t vy; // 左方向の速度 [mm/s]
-    int16_t ang_vel; // 上から見て半時計回り方向の角速度 [mrad/s] (ミリラジアン毎秒)
+    int16_t vx;       // 前方向の速度 [mm/s]
+    int16_t vy;       // 左方向の速度 [mm/s]
+    int16_t ang_vel;  // 上から見て半時計回り方向の角速度 [mrad/s] (ミリラジアン毎秒)
   } PROTOCOL_PACKED;
 
   struct CurrentState {

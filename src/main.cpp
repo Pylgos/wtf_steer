@@ -1,14 +1,15 @@
 #include <mbed.h>
-#include <anglelib.hpp>
-#include <rs485.hpp>
+
 #include <amt21.hpp>
+#include <anglelib.hpp>
 #include <c620.hpp>
+#include <controller.hpp>
 #include <first_penguin.hpp>
 #include <pid_controller.hpp>
+#include <rs485.hpp>
+#include <steer_4w_controller.hpp>
 #include <steer_angle_controller.hpp>
 #include <steer_unit_controller.hpp>
-#include <steer_4w_controller.hpp>
-#include <controller.hpp>
 #include <vmath.hpp>
 
 using namespace anglelib;
@@ -31,20 +32,23 @@ C620* const front_left_drive_motor = &c620_array[0];
 C620* const rear_left_drive_motor = &c620_array[1];
 C620* const rear_right_drive_motor = &c620_array[2];
 C620* const front_right_drive_motor = &c620_array[3];
-const std::array<C620*, 4> drive_motors = {front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
+const std::array<C620*, 4> drive_motors = {
+    front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
 FirstPenguinArray first_penguin_array{5};
 FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
 FirstPenguin* const rear_left_steer_motor = &first_penguin_array[3];
 FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
 FirstPenguin* const front_right_steer_motor = &first_penguin_array[1];
-const std::array<FirstPenguin*, 4> steer_motors = {front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
+const std::array<FirstPenguin*, 4> steer_motors = {
+    front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
 Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
 Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
 Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
 Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
-std::array<Amt21*, 4> steer_encoders = {&front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
+std::array<Amt21*, 4> steer_encoders = {
+    &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
 CircularBuffer<CANMessage, 127> can_write_buffer;
 
@@ -54,8 +58,8 @@ void can_push(const CANMessage& msg) {
 
 void flush_can_buffer() {
   CANMessage buffered_msg;
-  while (can_write_buffer.peek(buffered_msg)) {
-    if (can1.write(buffered_msg)) {
+  while(can_write_buffer.peek(buffered_msg)) {
+    if(can1.write(buffered_msg)) {
       can_write_buffer.pop(buffered_msg);
     } else {
       break;
@@ -69,12 +73,12 @@ Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.2
 
 void write_can() {
   const auto fp_msg = first_penguin_array.to_msg();
-  if (!can1.write(fp_msg)) {
+  if(!can1.write(fp_msg)) {
     printf("failed to write first penguin msg\n");
   }
 
   const auto c620_msgs = c620_array.to_msgs();
-  if (!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
+  if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
     // printf("failed to write c620 msg\n");
   }
 }
@@ -82,19 +86,19 @@ void write_can() {
 void read_can() {
   CANMessage msg;
 
-  if (can1.read(msg)) {
+  if(can1.read(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
   }
 
-  if (can2.read(msg)) {
+  if(can2.read(msg)) {
     c620_array.parse_packet(msg);
   }
 }
 
 int update_steer_encoders() {
   int error_count = 0;
-  for (auto& enc : steer_encoders) {
-    if (!enc->update_pos()) {
+  for(auto& enc: steer_encoders) {
+    if(!enc->update_pos()) {
       printf("failed to update steer encoder\n");
       error_count++;
     }
@@ -106,29 +110,29 @@ int update_steer_encoders() {
 int main() {
   printf("start\n");
 
-  controller.on_reset_pid([](){
+  controller.on_reset_pid([]() {
     printf("pid reset\n");
     steer_controller.set_steer_gain(controller.get_steer_gain());
     steer_controller.set_drive_gain(controller.get_drive_gain());
     steer_controller.reset();
   });
 
-  controller.on_activation([](){
+  controller.on_activation([]() {
     printf("activated\n");
   });
 
-  controller.on_deactivation([](){
+  controller.on_deactivation([]() {
     printf("deactivated\n");
   });
 
-  controller.on_steer_offset([](int idx, Anglef offset){
+  controller.on_steer_offset([](int idx, Anglef offset) {
     printf("steer offset: %d %7.3f\n", idx, offset.rad());
     steer_controller.set_steer_offset(idx, offset);
   });
 
-  controller.on_unwind([](){
+  controller.on_unwind([]() {
     printf("unwind\n");
-    steer_controller.on_unwound([](bool success){
+    steer_controller.on_unwound([](bool success) {
       printf("unwind done\n");
       controller.publish_steer_unwind_done();
     });
@@ -140,7 +144,7 @@ int main() {
   rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
   front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
 
-  for (const auto mot : steer_motors) {
+  for(const auto mot: steer_motors) {
     mot->set_invert(true);
   }
 
@@ -150,13 +154,13 @@ int main() {
   dt_timer.start();
   ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
 
-  while (true) {
+  while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
     dt_timer.reset();
 
     read_can();
     int error_count = update_steer_encoders();
-    if (error_count > 0) {
+    if(error_count > 0) {
       continue;
     }
     controller.update(timer.elapsed_time());
@@ -166,36 +170,33 @@ int main() {
     // }
     // printf("\n");
 
-    switch (controller.get_state()) {
+    switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
         steer_controller.reset();
-        for (size_t i = 0; i < 4; i++) {
+        for(size_t i = 0; i < 4; i++) {
           drive_motors[i]->set_tgt_torque(0);
           steer_motors[i]->set_duty(0);
         }
       } break;
 
       case Feedback::CurrentState::RUNNING: {
-        steer_controller.set_tgt_vel(
-          controller.get_tgt_linear_vel(),
-          controller.get_tgt_ang_vel());
+        steer_controller.set_tgt_vel(controller.get_tgt_linear_vel(), controller.get_tgt_ang_vel());
 
-        steer_controller.update(
-          {drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(), drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
-          {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(), steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
-          dt);
+        steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
+                                 drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
+                                {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
+                                 steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
+                                dt);
 
         auto drive_cmd = steer_controller.get_drive_outputs();
         auto steer_cmd = steer_controller.get_steer_outputs();
 
-        for (size_t i = 0; i < 4; i++) {
+        for(size_t i = 0; i < 4; i++) {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
 
-        controller.set_odom(
-          steer_controller.get_odom_linear_vel(),
-          steer_controller.get_odom_ang_vel());
+        controller.set_odom(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
       } break;
     }
 
@@ -203,6 +204,6 @@ int main() {
 
     do {
       flush_can_buffer();
-    } while (loop_period > dt_timer.elapsed_time());
+    } while(loop_period > dt_timer.elapsed_time());
   }
 }
