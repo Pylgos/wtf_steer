@@ -14,8 +14,9 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.platformio/.cache
+            ~/.platformio
             ${{ github.workspace }}/.cache
+            ${{ github.workspace }}/.pio
           key: ${{ runner.os }}-pio
       - uses: actions/setup-python@v4
         with:
