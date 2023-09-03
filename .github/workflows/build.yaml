@@ -11,14 +11,13 @@ jobs:
           path: |
             ~/.cache/pip
             ~/.platformio/.cache
+            ${{ github.workspace }}/.cache
           key: ${{ runner.os }}-pio
       - uses: actions/setup-python@v4
         with:
           python-version: '3.9'
       - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
-      - name: Install python dependencies
-        run: pip install intelhex future prettytable jsonschema jinja2
+        run: pip install --upgrade platformio intelhex future prettytable jsonschema jinja2 six
 
       - name: Build PlatformIO Project
         run: pio run
