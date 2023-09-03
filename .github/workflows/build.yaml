@@ -18,7 +18,7 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
       - name: Install python dependencies
-        run: pip install intelhex future prettytable jsonschema
+        run: pip install intelhex future prettytable jsonschema jinja2
 
       - name: Build PlatformIO Project
         run: pio run
