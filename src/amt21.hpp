@@ -4,6 +4,7 @@
 #include <mbed.h>
 #include <rs485.hpp>
 #include <anglelib.hpp>
+#include <array>
 
 class Amt21 {
   static constexpr float ticks_to_rads =  (2.0 * anglelib::PI) / 4096.0;
