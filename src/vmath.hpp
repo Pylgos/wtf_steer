@@ -1,8 +1,8 @@
 #ifndef VMATH_HPP
 #define VMATH_HPP
 
-#include <cmath>
 #include <anglelib.hpp>
+#include <cmath>
 
 namespace vmath {
 
@@ -11,8 +11,8 @@ struct Vec2 {
   T x{0};
   T y{0};
 
-  constexpr Vec2(T x_, T y_): x{x_}, y{y_} {}
-  constexpr Vec2(): x{0}, y{0} {}
+  constexpr Vec2(T x_, T y_) : x{x_}, y{y_} {}
+  constexpr Vec2() : x{0}, y{0} {}
 
   constexpr T length2() const {
     return x * x + y * y;
@@ -87,10 +87,7 @@ struct Vec2 {
   constexpr Vec2 rotated(anglelib::Angle<T> angle) const {
     const T s = anglelib::sin(angle);
     const T c = anglelib::cos(angle);
-    return Vec2(
-      x * c + y * -s,
-      x * s + y * c
-    );
+    return Vec2(x * c + y * -s, x * s + y * c);
   }
 
   constexpr float dot(Vec2 rhs) const {
@@ -104,8 +101,8 @@ struct Vec3 {
   T y{0};
   T z{0};
 
-  constexpr Vec3(T x_, T y_, T z_): x{x_}, y{y_}, z{z_} {}
-  constexpr Vec3(): x{0}, y{0}, z{0} {}
+  constexpr Vec3(T x_, T y_, T z_) : x{x_}, y{y_}, z{z_} {}
+  constexpr Vec3() : x{0}, y{0}, z{0} {}
 
   constexpr T length2() const {
     return x * x + y * y + z * z;
@@ -174,9 +171,9 @@ struct Vec3 {
 
   constexpr Vec3 cross(Vec3 rhs) const {
     return Vec3{
-      y*rhs.z - z*rhs.y,
-      z*rhs.x - x*rhs.z,
-      x*rhs.y - y*rhs.x,
+        y * rhs.z - z * rhs.y,
+        z * rhs.x - x * rhs.z,
+        x * rhs.y - y * rhs.x,
     };
   }
 };
@@ -187,6 +184,6 @@ using Vec2d = Vec2<double>;
 using Vec3f = Vec3<float>;
 using Vec3d = Vec3<double>;
 
-}
+}  // namespace vmath
 
 #endif

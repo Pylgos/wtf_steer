@@ -11,12 +11,12 @@ static constexpr bool is_equal_approx(T a, T b) {
   using std::abs;
   constexpr T CMP_EPSILON = T(0.00001);
   // Check for exact equality first, required to handle "infinity" values.
-  if (a == b) {
+  if(a == b) {
     return true;
   }
   // Then check for approximate equality.
   T tolerance = CMP_EPSILON * abs(a);
-  if (tolerance < CMP_EPSILON) {
+  if(tolerance < CMP_EPSILON) {
     tolerance = CMP_EPSILON;
   }
   return abs(a - b) < tolerance;
@@ -31,18 +31,18 @@ template<class T>
 static constexpr T wrapf(T value, T min, T max) {
   using std::floor;
   T range = max - min;
-  if (is_zero_approx(range)) {
+  if(is_zero_approx(range)) {
     return min;
   }
   T result = value - (range * floor((value - min) / range));
-  if (is_equal_approx(result, max)) {
+  if(is_equal_approx(result, max)) {
     return min;
   }
   return result;
 }
 
 constexpr double PI = 3.1415926535897932384626;
-constexpr double TAU = 2*PI;
+constexpr double TAU = 2 * PI;
 
 template<class Rep>
 struct Direction;
@@ -54,11 +54,9 @@ struct Angle {
   static inline constexpr Angle<Rep> half_turn{PI};
   static inline constexpr Angle<Rep> turn{2 * PI};
 
-  Angle(): value{0} {}
+  Angle() : value{0} {}
 
-  constexpr explicit Angle(Rep radians)
-      : value{radians} {
-  }
+  constexpr explicit Angle(Rep radians) : value{radians} {}
 
   static constexpr Angle<Rep> from_deg(Rep degrees) {
     return Angle<Rep>(degrees * Rep((2 * PI) / 360));
@@ -166,7 +164,7 @@ struct Direction {
   using rep = Rep;
   static inline constexpr Direction<Rep> zero{0};
   static inline constexpr Direction<Rep> min{0};
-  static inline constexpr Direction<Rep> max{2*PI};
+  static inline constexpr Direction<Rep> max{2 * PI};
 
   Direction() : value{0} {}
 
@@ -197,7 +195,7 @@ struct Direction {
   }
 
   constexpr void normalize() {
-    value = wrapf(value, Rep(0), Rep(2*PI));
+    value = wrapf(value, Rep(0), Rep(2 * PI));
   }
 
   constexpr Direction<Rep>& operator+=(Angle<Rep> rhs) {
@@ -235,12 +233,12 @@ struct Direction {
   constexpr Angle<Rep> angle_to(Direction<Rep> dir) const {
     Angle<Rep> a = Angle<Rep>(dir.value - value).direction().zero_to_2pi();
     Angle<Rep> b{0};
-    if (a > Angle<Rep>::turn / 2) {
+    if(a > Angle<Rep>::turn / 2) {
       b = a - Angle<Rep>::turn;
     } else {
       b = Angle<Rep>::turn - a;
     }
-    if (a.abs() < b.abs()) {
+    if(a.abs() < b.abs()) {
       return a;
     } else {
       return b;
@@ -277,6 +275,6 @@ Rep cos(Direction<Rep> a) {
 using Anglef = Angle<float>;
 using Directionf = Direction<float>;
 
-};
+};  // namespace anglelib
 
 #endif

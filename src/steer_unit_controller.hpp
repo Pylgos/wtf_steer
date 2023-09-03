@@ -11,10 +11,9 @@ class SteerUnitController {
   using Angle = anglelib::Anglef;
   using Direction = anglelib::Directionf;
 
-public:
+ public:
   SteerUnitController(PidGain steer_gain, PidGain drive_gain, float wheel_radius)
-    : steer_controller_{steer_gain}, drive_controller_{drive_gain}, wheel_radius_{wheel_radius}
-  {}
+      : steer_controller_{steer_gain}, drive_controller_{drive_gain}, wheel_radius_{wheel_radius} {}
 
   void set_tgt_vel(Vec2 vel) {
     tgt_vel_ = vel;
@@ -24,7 +23,7 @@ public:
     odom_vel_ = Vec2(present_drive_ang_vel * wheel_radius_, 0).rotated(present_steer_angle);
     bool is_stopping = tgt_vel_.length() < 0.1;
 
-    if (is_stopping) {
+    if(is_stopping) {
       steer_controller_.set_tgt_direction(last_tgt_dir_);
       drive_controller_.set_target(0.0);
       steer_controller_.update(present_steer_angle, dt);
@@ -38,7 +37,7 @@ public:
     Direction tgt_backward_dir = tgt_dir + Angle::half_turn;
     Angle tgt_angle = present_steer_angle.closest_angle_of(tgt_dir);
     Angle tgt_backward_angle = present_steer_angle.closest_angle_of(tgt_backward_dir);
-    if ((tgt_angle - present_steer_angle).abs() < (tgt_backward_angle - present_steer_angle).abs()) {
+    if((tgt_angle - present_steer_angle).abs() < (tgt_backward_angle - present_steer_angle).abs()) {
       steer_controller_.set_tgt_direction(tgt_dir);
       drive_controller_.set_target(tgt_vel_.length() / wheel_radius_);
       last_tgt_dir_ = tgt_dir;
@@ -98,7 +97,7 @@ public:
     return odom_vel_;
   }
 
-private:
+ private:
   SteerAngleController steer_controller_;
   PidController drive_controller_;
   float wheel_radius_;

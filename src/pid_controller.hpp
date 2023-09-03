@@ -1,9 +1,9 @@
 #ifndef PID_CONTROLLER_HPP
 #define PID_CONTROLLER_HPP
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <numeric>
-#include <algorithm>
 
 struct PidGain {
   float kp = 0;
@@ -16,12 +16,12 @@ struct PidGain {
 };
 
 class PidController {
-public:
+ public:
   PidController(PidGain gain) : gain_{gain} {}
 
   void update(float present, std::chrono::nanoseconds dt) {
     float vel = 0.0;
-    if (!std::isnan(prev_)) {
+    if(!std::isnan(prev_)) {
       vel = (present - prev_) / to_sec(dt);
     }
     update_with_vel(present, vel, dt);
@@ -30,10 +30,7 @@ public:
   void update_with_vel(float present, float velocity, std::chrono::nanoseconds dt) {
     prev_ = present;
     float dt_sec = to_sec(dt);
-    if (std::isnan(target_)
-        || std::isnan(present)
-        || std::isnan(velocity)
-        || dt_sec == 0.0f) {
+    if(std::isnan(target_) || std::isnan(present) || std::isnan(velocity) || dt_sec == 0.0f) {
       return;
     }
     float error = target_ - present;
@@ -41,7 +38,7 @@ public:
     integral_ += error * dt_sec;
     float i = integral_ * gain_.ki;
     float d = 0.0;
-    if (gain_.use_velocity_for_d_term) {
+    if(gain_.use_velocity_for_d_term) {
       d = velocity * gain_.kd;
     } else {
       d = ((error - prev_error_) / dt_sec) * gain_.kd;
@@ -58,9 +55,13 @@ public:
     output_ = output_saturated;
   }
 
-  void set_target(float target) { target_ = target; }
+  void set_target(float target) {
+    target_ = target;
+  }
 
-  float get_output() { return output_; }
+  float get_output() {
+    return output_;
+  }
 
   void reset() {
     output_ = 0.0;
@@ -75,7 +76,7 @@ public:
     reset();
   }
 
-private:
+ private:
   static float to_sec(std::chrono::nanoseconds dur) {
     return dur.count() * 1e-9f;
   }

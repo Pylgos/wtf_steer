@@ -17,17 +17,17 @@ struct Rs485 {
     data_enable_.write(0);
   }
 
-  bool recv(void *buf, const size_t len, const std::chrono::microseconds timeout) {
+  bool recv(void* buf, const size_t len, const std::chrono::microseconds timeout) {
     timer.reset();
     size_t bytes_read = 0;
-    while (bytes_read != len) {
-      if (bus_.readable()) {
+    while(bytes_read != len) {
+      if(bus_.readable()) {
         int ret = bus_.read((void*)((size_t)buf + bytes_read), len - bytes_read);
-        if (ret > 0) {
+        if(ret > 0) {
           bytes_read += ret;
         }
       }
-      if (timer.elapsed_time() > timeout) {
+      if(timer.elapsed_time() > timeout) {
         return false;
       }
     }

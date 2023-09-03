@@ -1,24 +1,24 @@
 #ifndef STEER_ANGLE_CONTROLLER_HPP
 #define STEER_ANGLE_CONTROLLER_HPP
 #include <anglelib.hpp>
-#include <pid_controller.hpp>
 #include <functional>
+#include <pid_controller.hpp>
 
 class SteerAngleController {
   using Angle = anglelib::Anglef;
   using Direction = anglelib::Directionf;
 
-public:
-  SteerAngleController(PidGain gain, Angle home_angle = Angle::zero): pid_{gain}, home_angle_{home_angle} {}
+ public:
+  SteerAngleController(PidGain gain, Angle home_angle = Angle::zero) : pid_{gain}, home_angle_{home_angle} {}
 
   void update(Angle present, std::chrono::nanoseconds dt) {
-    if (unwinding_ && is_unwound(present)) {
+    if(unwinding_ && is_unwound(present)) {
       unwinding_ = false;
-      if (on_unwound_) on_unwound_(true);
+      if(on_unwound_) on_unwound_(true);
     }
 
     Angle target_angle;
-    if (unwinding_) {
+    if(unwinding_) {
       target_angle = home_angle_;
     } else {
       target_angle = present.closest_angle_of(target_dir_);
@@ -36,7 +36,7 @@ public:
   }
 
   void stop_unwinding() {
-    if (unwinding_ && on_unwound_) on_unwound_(false);
+    if(unwinding_ && on_unwound_) on_unwound_(false);
     unwinding_ = false;
   }
 
@@ -64,7 +64,7 @@ public:
     pid_.reset();
   }
 
-private:
+ private:
   PidController pid_;
   Direction target_dir_;
   Angle home_angle_;
