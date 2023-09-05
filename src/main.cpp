@@ -183,10 +183,48 @@ int main() {
     steer_controller.start_unwinding();
   });
 
-  front_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  rear_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  rear_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  front_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  controller.on_donfan([](int8_t) {
+    printf("donfan");
+  });
+  controller.on_expander([](bool) {
+    printf("expander");
+  });
+  controller.on_collector([](int16_t) {
+    printf("collector");
+  });
+  controller.on_arm_angle([](int16_t) {
+    printf("arm_angle");
+  });
+  controller.on_arm_length([](int16_t) {
+    printf("arm_length");
+  });
+  controller.on_large_wheel([](int16_t) {
+    printf("large_wheel");
+  });
+
+  controller.on_donfan([](int8_t) {
+    printf("donfan");
+  });
+  controller.on_expander([](bool) {
+    printf("expander");
+  });
+  controller.on_collector([](int16_t) {
+    printf("collector");
+  });
+  controller.on_arm_angle([](int16_t) {
+    printf("arm_angle");
+  });
+  controller.on_arm_length([](int16_t) {
+    printf("arm_length");
+  });
+  controller.on_large_wheel([](int16_t) {
+    printf("large_wheel");
+  });
+
+  front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
 
   for(const auto mot: steer_motors) {
     mot->set_invert(true);
