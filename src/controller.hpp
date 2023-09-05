@@ -119,6 +119,26 @@ class Controller {
       case Command::Tag::UNWIND_STEER:
         call(on_unwind_);
         break;
+
+      // mech
+      case Command::Tag::SET_DONFAN_CMD:
+        call(on_donfan_, cmd.set_donfan_cmd.dir);
+        break;
+      case Command::Tag::SET_EXPANDER_CMD:
+        call(on_expander_, cmd.set_expander_cmd.cmd);
+        break;
+      case Command::Tag::SET_COLLECTOR_CMD:
+        call(on_collector_, cmd.set_collector_cmd.enable);
+        break;
+      case Command::Tag::SET_ARM_ANGLE:
+        call(on_arm_angle_, cmd.set_arm_angle.angle);
+        break;
+      case Command::Tag::SET_ARM_LENGTH:
+        call(on_arm_length_, cmd.set_arm_length.length);
+        break;
+      case Command::Tag::SET_LARGE_WHEEL_CMD:
+        call(on_large_wheel_, cmd.set_large_wheel_cmd.cmd);
+        break;
     }
 
     return true;
@@ -179,6 +199,24 @@ class Controller {
 
   void on_unwind(std::function<void()> f) {
     on_unwind_ = f;
+  }
+  void on_donfan(std::function<void(int8_t)> f) {
+    on_donfan_ = f;
+  }
+  void on_expander(std::function<void(int16_t)> f) {
+    on_expander_ = f;
+  }
+  void on_collector(std::function<void(bool)> f) {
+    on_collector_ = f;
+  }
+  void on_arm_angle(std::function<void(int16_t)> f) {
+    on_arm_angle_ = f;
+  }
+  void on_arm_length(std::function<void(int16_t)> f) {
+    on_arm_length_ = f;
+  }
+  void on_large_wheel(std::function<void(int16_t)> f) {
+    on_large_wheel_ = f;
   }
 
   bool is_timeout(std::chrono::microseconds now) {
@@ -267,6 +305,12 @@ class Controller {
   std::function<void()> on_deactivation_ = nullptr;
   std::function<void(int idx, anglelib::Anglef offset)> on_steer_offset_ = nullptr;
   std::function<void()> on_unwind_ = nullptr;
+  std::function<void(int8_t)> on_donfan_ = nullptr;
+  std::function<void(int16_t)> on_expander_ = nullptr;
+  std::function<void(bool)> on_collector_ = nullptr;
+  std::function<void(int16_t)> on_arm_angle_ = nullptr;
+  std::function<void(int16_t)> on_arm_length_ = nullptr;
+  std::function<void(int16_t)> on_large_wheel_ = nullptr;
 };
 
 #endif
