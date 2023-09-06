@@ -9,7 +9,7 @@ class SteerAngleController {
   using Direction = anglelib::Directionf;
 
  public:
-  SteerAngleController(PidGain gain, Angle home_angle = Angle::zero) : pid_{gain}, home_angle_{home_angle} {}
+  SteerAngleController(PidGain gain, Angle home_angle = Angle::zero()) : pid_{gain}, home_angle_{home_angle} {}
 
   void update(Angle present, std::chrono::nanoseconds dt) {
     if(unwinding_ && is_unwound(present)) {
