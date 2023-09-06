@@ -13,7 +13,7 @@ class Amt21 {
   using Direction = anglelib::Directionf;
 
  public:
-  Amt21(Rs485* rs485, uint8_t address, float scale = 1.0, Angle offset = Angle::zero)
+  Amt21(Rs485* rs485, uint8_t address, float scale = 1.0, Angle offset = Angle::zero())
       : rs485_{rs485}, address_{address}, raw_angle_{0}, scale_{scale}, offset_{offset}, angle_{0} {}
 
   Angle get_angle() {

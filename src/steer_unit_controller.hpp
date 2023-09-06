@@ -34,7 +34,7 @@ class SteerUnitController {
     stop_unwinding();
 
     Direction tgt_dir = Direction::from_xy(tgt_vel_.x, tgt_vel_.y);
-    Direction tgt_backward_dir = tgt_dir + Angle::half_turn;
+    Direction tgt_backward_dir = tgt_dir + Angle::half_turn();
     Angle tgt_angle = present_steer_angle.closest_angle_of(tgt_dir);
     Angle tgt_backward_angle = present_steer_angle.closest_angle_of(tgt_backward_dir);
     if((tgt_angle - present_steer_angle).abs() < (tgt_backward_angle - present_steer_angle).abs()) {
@@ -53,7 +53,7 @@ class SteerUnitController {
 
   void start_unwinding() {
     steer_controller_.start_unwinding();
-    last_tgt_dir_ = Direction::zero;
+    last_tgt_dir_ = Direction::zero();
   }
 
   void stop_unwinding() {
