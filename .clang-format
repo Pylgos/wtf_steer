@@ -65,10 +65,9 @@ SpacesInCStyleCastParentheses: false
 SpacesInConditionalStatement: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-Standard: c++23
+Standard: c++20
 UseCRLF: false
 UseTab: Never
-BreakBeforeBraces: Custom
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
