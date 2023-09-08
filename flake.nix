@@ -12,6 +12,7 @@
     in {
       devShell = pkgs.mkShell {
         nativeBuildInputs = [
+          pkgs.clang-tools_16
           pkgs.platformio-core
           py.intelhex
           py.future

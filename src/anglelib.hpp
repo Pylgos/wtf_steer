@@ -50,9 +50,15 @@ struct Direction;
 template<class Rep>
 struct Angle {
   using rep = Rep;
-  static inline constexpr Angle<Rep> zero{0};
-  static inline constexpr Angle<Rep> half_turn{PI};
-  static inline constexpr Angle<Rep> turn{2 * PI};
+  static constexpr Angle<Rep> zero() {
+    return Angle{0};
+  };
+  static constexpr Angle<Rep> half_turn() {
+    return Angle{PI};
+  };
+  static constexpr Angle<Rep> turn() {
+    return Angle{2 * PI};
+  };
 
   Angle() : value{0} {}
 
@@ -162,9 +168,15 @@ struct Angle {
 template<class Rep>
 struct Direction {
   using rep = Rep;
-  static inline constexpr Direction<Rep> zero{0};
-  static inline constexpr Direction<Rep> min{0};
-  static inline constexpr Direction<Rep> max{2 * PI};
+  static constexpr Direction<Rep> zero() {
+    return Direction{0};
+  };
+  static constexpr Direction<Rep> min() {
+    return Direction{0};
+  };
+  static constexpr Direction<Rep> max() {
+    return Direction{2 * PI};
+  };
 
   Direction() : value{0} {}
 
@@ -233,10 +245,10 @@ struct Direction {
   constexpr Angle<Rep> angle_to(Direction<Rep> dir) const {
     Angle<Rep> a = Angle<Rep>(dir.value - value).direction().zero_to_2pi();
     Angle<Rep> b{0};
-    if(a > Angle<Rep>::turn / 2) {
-      b = a - Angle<Rep>::turn;
+    if(a > Angle<Rep>::turn() / 2) {
+      b = a - Angle<Rep>::turn();
     } else {
-      b = Angle<Rep>::turn - a;
+      b = Angle<Rep>::turn() - a;
     }
     if(a.abs() < b.abs()) {
       return a;
