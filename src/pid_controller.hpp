@@ -46,7 +46,7 @@ class PidController {
     prev_error_ = error;
     float output = p + i + d;
     float output_saturated = std::clamp(output, gain_.min, gain_.max);
-    if (gain_.anti_windup && gain_.ki != 0) {
+    if(gain_.anti_windup && gain_.ki != 0) {
       float integral_max = gain_.max / gain_.ki;
       float integral_min = gain_.min / gain_.ki;
       integral_ = std::clamp(integral_, integral_min, integral_max);
@@ -57,6 +57,9 @@ class PidController {
 
   void set_target(float target) {
     target_ = target;
+  }
+  auto get_target() const {
+    return target_;
   }
 
   float get_output() {

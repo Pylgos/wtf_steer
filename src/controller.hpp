@@ -28,10 +28,16 @@ class Controller {
     Command cmd;
     memcpy(&cmd, msg.data, sizeof(cmd));
 
+    // printf("%u\n", cmd.tag);
+
     switch(cmd.tag) {
       case Command::Tag::SET_TARGET_VELOCITY: {
         tgt_linear_vel_ = Vec2{cmd.set_target_velocity.vx * 1e-3f, cmd.set_target_velocity.vy * 1e-3f};
         tgt_ang_vel_ = cmd.set_target_velocity.ang_vel * 1e-3f;
+        // printf("% 5d ", cmd.set_target_velocity.vx);
+        // printf("% 5d ", cmd.set_target_velocity.vy);
+        // printf("% 5d ", cmd.set_target_velocity.ang_vel);
+        // printf("\n");
       } break;
 
       case Command::Tag::SET_PARAM: {
@@ -96,17 +102,8 @@ class Controller {
             break;
         }
 
-        Feedback fb;
-        fb.tag = Feedback::Tag::PARAM_EVENT;
-        fb.param_event.id = arg.id;
-        fb.param_event.value = arg.value;
-        CANMessage resp;
-        resp.id = Feedback::ID;
-        resp.type = CANData;
-        resp.format = CANStandard;
-        resp.len = 8;
-        memcpy(resp.data, &fb, sizeof(fb));
-
+        Feedback fb = {.tag = Feedback::Tag::PARAM_EVENT, .param_event = {.id = arg.id, .value = arg.value}};
+        CANMessage resp = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
         can_write_impl_(resp);
       } break;
 
@@ -149,7 +146,7 @@ class Controller {
       deactivate();
     }
 
-    if(now - last_state_publish_ > std::chrono::milliseconds(100)) {
+    if(now - last_state_publish_ > 100ms) {
       publish_state();
       last_state_publish_ = now;
     }
@@ -220,7 +217,7 @@ class Controller {
   }
 
   bool is_timeout(std::chrono::microseconds now) {
-    return now - last_cmd_received_ > std::chrono::milliseconds(100);
+    return now - last_cmd_received_ > 100ms;
   }
 
   State get_state() {
