@@ -31,6 +31,9 @@ class FirstPenguin {
   void parse_packet(const uint8_t data[8]) {
     memcpy(&rx, data, sizeof(rx));
   }
+  int32_t get_enc() const {
+    return rx.enc_;
+  }
 
  private:
   int8_t scale_ = 1;
