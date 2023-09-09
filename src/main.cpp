@@ -1,5 +1,6 @@
 #include <mbed.h>
 
+#include <advanced_can.hpp>
 #include <amt21.hpp>
 #include <anglelib.hpp>
 #include <c620.hpp>
@@ -23,8 +24,8 @@ static constexpr float wheel_radius = 0.05;
 
 BufferedSerial pc{USBTX, USBRX, 115200};
 Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
-RawCAN can1{PA_11, PA_12, (int)1e6};
-CAN can2{PB_12, PB_13, (int)1e6};
+AdvancedCAN can1;
+AdvancedCAN can2;
 Timer timer;
 DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
@@ -60,6 +61,7 @@ void can_push(const CANMessage& msg) {
 }
 
 void flush_can_buffer() {
+  if (!can1.isOpened()) return;
   CANMessage buffered_msg;
   while(can_write_buffer.peek(buffered_msg)) {
     if(can1.write(buffered_msg)) {
@@ -77,21 +79,58 @@ Steer4WController steer_controller{
     // PidGain{.kp = 1.0, .max = 0.9, .min = -0.9}, PidGain{.kp = 1.0, .ki = 0.1, .max = 20.0, .min = -20.0}, wheel_radius,
     Vec2f(0.201, 0.201)};
 
-void write_can() {
-  const auto fp_msg = first_penguin_array.to_msg();
-  if(!can1.write(fp_msg)) {
-    printf("failed to write first penguin msg\n");
-  }
-  can1.write(fp_mech[0].to_msg());
-  can1.write(fp_mech[1].to_msg());
+bool try_init_can() {
+  bool both_initilized = true;
 
-  const auto c620_msgs = c620_array.to_msgs();
-  if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
-    // printf("failed to write c620 msg\n");
+  if(!can1.isOpened()) {
+    if(can1.init(PA_11, PA_12, (int)1e6)) {
+      printf("can1 was initialized\n");
+      can1.attach(
+          []() {
+            CANMessage msg;
+            if(can1.read(msg)) {
+              can_read_buffer.push(msg);
+            }
+          },
+          RawCAN::RxIrq);
+    } else {
+      both_initilized = false;
+    }
+  }
+
+  if(!can2.isOpened()) {
+    if (can2.init(PB_12, PB_13, (int)1e6)) {
+      printf("can2 was initialized\n");
+    } else {
+      both_initilized = false;
+    }
+  }
+
+  return both_initilized;
+}
+
+void write_can() {
+  try_init_can();
+
+  if (can1.isOpened()) {
+    const auto fp_msg = first_penguin_array.to_msg();
+    if(!can1.write(fp_msg)) {
+      printf("failed to write first penguin msg\n");
+    }
+    can1.write(fp_mech[0].to_msg());
+    can1.write(fp_mech[1].to_msg());
+  }
+
+  if (can2.isOpened()) {
+    const auto c620_msgs = c620_array.to_msgs();
+    if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
+      // printf("failed to write c620 msg\n");
+    }
   }
 }
 
 void read_can() {
+  try_init_can();
   CANMessage msg;
 
   while(can_read_buffer.pop(msg)) {
@@ -100,8 +139,10 @@ void read_can() {
     fp_mech[1].parse_packet(msg);
   }
 
-  if(can2.read(msg)) {
-    c620_array.parse_packet(msg);
+  if (can2.isOpened()) {
+    if(can2.read(msg)) {
+      c620_array.parse_packet(msg);
+    }
   }
 }
 
@@ -255,14 +296,7 @@ void mech_task() {
 int main() {
   printf("start\n");
 
-  can1.attach(
-      []() {
-        CANMessage msg;
-        if(can1.read(msg)) {
-          can_read_buffer.push(msg);
-        }
-      },
-      RawCAN::RxIrq);
+  try_init_can();
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
