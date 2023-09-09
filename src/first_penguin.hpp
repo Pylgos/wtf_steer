@@ -1,5 +1,5 @@
-#ifndef FIRST_PENGUIN_H
-#define FIRST_PENGUIN_H
+#ifndef FIRST_PENGUIN_HPP
+#define FIRST_PENGUIN_HPP
 
 #include <mbed.h>
 
@@ -22,7 +22,7 @@ class FirstPenguin {
   }
 
   void set_duty(const float duty) {
-    raw_duty_ = std::max(std::min(duty, 1.0f), -1.0f) * 16384 * scale_;
+    raw_duty_ = std::clamp(duty, -1.0f, 1.0f) * 16384 * scale_;
   }
   float get_duty() const {
     return raw_duty_ * (1.0f / 16384.0f) / scale_;
@@ -35,7 +35,7 @@ class FirstPenguin {
  private:
   int8_t scale_ = 1;
   int16_t raw_duty_ = 0;
-  FPRxPacket rx;
+  FPRxPacket rx = {};
 };
 
 

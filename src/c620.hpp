@@ -27,7 +27,7 @@ class C620 {
   }
 
   void set_tgt_current(const float tgt_current) {
-    raw_tgt_current_ = std::max(std::min(tgt_current, 20.0f), -20.0f) * (16384.0f / 20.0f);
+    raw_tgt_current_ = std::clamp(tgt_current, -20.0f, 20.0f) * (16384.0f / 20.0f);
   }
   float get_tgt_current() const {
     return raw_tgt_current_ * (20.0f / 16384.0f);
