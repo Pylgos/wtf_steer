@@ -62,7 +62,7 @@ class FirstPenguinArray {
     return msg;
   }
 
-  void parse_packaet(const CANMessage& msg) {
+  void parse_packet(const CANMessage& msg) {
     if(msg.format == CANStandard && msg.type == CANData && msg.len == sizeof(FPRxPacket) && base_can_id_ < msg.id &&
        msg.id <= base_can_id_ + 5u) {
       ary_[msg.id - base_can_id_ - 1].parse_packet(msg.data);
