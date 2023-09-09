@@ -17,7 +17,7 @@ using namespace anglelib;
 using namespace vmath;
 
 
-static constexpr chrono::microseconds loop_period = 1ms;
+static constexpr chrono::microseconds loop_period = 10ms;
 static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
 static constexpr float wheel_radius = 0.05;
 
@@ -39,17 +39,17 @@ const std::array<C620*, 4> drive_motors = {
 
 FirstPenguinArray first_penguin_array{40};
 FirstPenguinArray fp_mech[] = {{30}, {35}};
-FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
-FirstPenguin* const rear_left_steer_motor = &first_penguin_array[3];
-FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
-FirstPenguin* const front_right_steer_motor = &first_penguin_array[1];
+FirstPenguin* const front_left_steer_motor = &first_penguin_array[2];
+FirstPenguin* const rear_left_steer_motor = &first_penguin_array[1];
+FirstPenguin* const rear_right_steer_motor = &first_penguin_array[0];
+FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
-Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
-Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
-Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-74.487)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.272)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-25.620)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.665)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -74,7 +74,12 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
+Steer4WController steer_controller{
+    PidGain{.kp = 0.5, .max = 0.9, .min = -0.9, .anti_windup = true},
+    // PidGain{.kp = 1.0, .max = 0.9, .min = -0.9},
+    PidGain{.kp = 4.0, .ki = 4.0, .max = 40.0, .min = -40.0, .anti_windup = true},
+    // PidGain{.kp = 1.0, .ki = 0.1, .max = 20.0, .min = -20.0},
+    wheel_radius, Vec2f(0.201, 0.201)};
 
 bool try_init_can() {
   bool both_initilized = true;
