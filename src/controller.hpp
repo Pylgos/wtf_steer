@@ -96,17 +96,8 @@ class Controller {
             break;
         }
 
-        Feedback fb;
-        fb.tag = Feedback::Tag::PARAM_EVENT;
-        fb.param_event.id = arg.id;
-        fb.param_event.value = arg.value;
-        CANMessage resp;
-        resp.id = Feedback::ID;
-        resp.type = CANData;
-        resp.format = CANStandard;
-        resp.len = 8;
-        memcpy(resp.data, &fb, sizeof(fb));
-
+        Feedback fb = {.tag = Feedback::Tag::PARAM_EVENT, .param_event = {.id = arg.id, .value = arg.value}};
+        CANMessage resp = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
         can_write_impl_(resp);
       } break;
 
@@ -129,7 +120,7 @@ class Controller {
       deactivate();
     }
 
-    if(now - last_state_publish_ > std::chrono::milliseconds(100)) {
+    if(now - last_state_publish_ > 100ms) {
       publish_state();
       last_state_publish_ = now;
     }

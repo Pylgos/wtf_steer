@@ -27,7 +27,7 @@ class C620 {
   }
 
   void set_tgt_current(const float tgt_current) {
-    raw_tgt_current_ = std::max(std::min(tgt_current, 20.0f), -20.0f) * (16384.0f / 20.0f);
+    raw_tgt_current_ = std::clamp(tgt_current, -20.0f, 20.0f) * (16384.0f / 20.0f);
   }
   float get_tgt_current() const {
     return raw_tgt_current_ * (20.0f / 16384.0f);
@@ -76,9 +76,9 @@ struct C620Array {
 
   std::array<CANMessage, 2> to_msgs() const {
     std::array<CANMessage, 2> result;
-    for(size_t i = 0; i < result.size(); i++) {
-      for(size_t j = 0; j < 4; j++) {
-        auto&& c620 = ary_[i * 2 + j];
+    for(size_t i = 0; i < result.size(); ++i) {
+      for(size_t j = 0; j < 4; ++j) {
+        auto&& c620 = ary_[i * 4 + j];
         result[i].data[j * 2] = c620.get_raw_tgt_current() >> 8;
         result[i].data[j * 2 + 1] = c620.get_raw_tgt_current() & 0xff;
       }
