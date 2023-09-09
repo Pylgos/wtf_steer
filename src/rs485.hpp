@@ -13,7 +13,7 @@ struct Rs485 {
   void send(void* buf, const int len) {
     data_enable_.write(1);
     bus_.write(buf, len);
-    wait_us(5);
+    wait_us(6);
     data_enable_.write(0);
   }
 
@@ -36,11 +36,11 @@ struct Rs485 {
 
   void flush_read_buffer() {
     uint8_t buf;
-    while(bus_.read(&buf, 1) > 0) {}
+    while(bus_.readable() && bus_.read(&buf, 1) > 0) {}
   }
 
   Timer timer;
-  BufferedSerial bus_;
+  UnbufferedSerial bus_;
   DigitalOut data_enable_;
 };
 

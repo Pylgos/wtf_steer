@@ -27,14 +27,16 @@ class Amt21 {
   }
 
   bool update_pos() {
-    rs485_->flush_read_buffer();
-    rs485_->send(&address_, 1);
-    if(uint16_t resp; rs485_->recv(&resp, sizeof(resp), 100us) && (is_valid(resp))) {
-      uint16_t ticks = (resp & 0b0011'1111'1111'1111) >> 2;
-      auto dir = Direction::from_rad(ticks * ticks_to_rads);
-      raw_angle_ = raw_angle_.closest_angle_of(dir);
-      angle_ = raw_angle_ * scale_ + offset_;
-      return true;
+    for (size_t i = 0; i < 3; ++i) {
+      rs485_->flush_read_buffer();
+      rs485_->send(&address_, 1);
+      if(uint16_t resp; rs485_->recv(&resp, sizeof(resp), 20us) && (is_valid(resp))) {
+        uint16_t ticks = (resp & 0b0011'1111'1111'1111) >> 2;
+        auto dir = Direction::from_rad(ticks * ticks_to_rads);
+        raw_angle_ = raw_angle_.closest_angle_of(dir);
+        angle_ = raw_angle_ * scale_ + offset_;
+        return true;
+      }
     }
     return false;
   }
