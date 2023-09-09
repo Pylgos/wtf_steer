@@ -27,6 +27,7 @@ Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
 AdvancedCAN can1;
 AdvancedCAN can2;
 Timer timer;
+DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
 C620* const front_left_drive_motor = &c620_array[0];
@@ -36,7 +37,8 @@ C620* const front_right_drive_motor = &c620_array[3];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
-FirstPenguinArray first_penguin_array{5};
+FirstPenguinArray first_penguin_array{40};
+FirstPenguinArray fp_mech[] = {{30}, {35}};
 FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
 FirstPenguin* const rear_left_steer_motor = &first_penguin_array[3];
 FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
@@ -128,6 +130,8 @@ void read_can() {
 
   while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
+    fp_mech[0].parse_packet(msg);
+    fp_mech[1].parse_packet(msg);
   }
 
   if(can2.isOpened()) {
@@ -149,6 +153,159 @@ int update_steer_encoders() {
   return error_count;
 }
 
+struct Donfan {
+  void task() {
+    bool lim[2] = {!limit_sw[7], !limit_sw[6]};
+    if(lim[0] && dir == 1) dir = 0;
+    if(lim[1] && dir == -1) dir = 0;
+
+    if(dir == 1) {
+      fp_mech[1][1].set_raw_duty(8000);
+    } else if(dir == -1) {
+      fp_mech[1][1].set_raw_duty(-8000);
+    } else {
+      fp_mech[1][1].set_raw_duty(0);
+    }
+  }
+  int8_t dir = 0;
+} donfan;
+struct Expander {
+  void task() {
+    // 下10 上6
+    // bool lim[2] = {!limit_sw[5], !limit_sw[9]};
+    auto now = HighResClock::now();
+    pid.update(-fp_mech[0][3].get_enc(), now - pre);
+    fp_mech[0][3].set_duty(-pid.get_output());
+    pre = now;
+  }
+  PidController pid = {PidGain{.kp = 0.0005, .max = 0.9, .min = -0.9}};
+  decltype(HighResClock::now()) pre = HighResClock::now();
+} expander;
+struct Collector {
+  void task() {
+    // 3
+    bool lim = !limit_sw[2];
+    if(collecting) {
+      state = Running;
+    } else if(state == Stop || lim) {
+      state = Stop;
+    } else {
+      state = Storing;
+    }
+
+    switch(state) {
+      case Stop:
+        fp_mech[1][0].set_raw_duty(0);
+        break;
+      case Running:
+      case Storing:
+        fp_mech[1][0].set_raw_duty(8000);
+        break;
+    }
+  }
+  enum {
+    Stop,
+    Running,
+    Storing,
+  } state;
+  bool collecting;
+} collector;
+struct ArmAngle {
+  void task() {
+    // 4
+    // bool lim = !limit_sw[3];
+    auto now = HighResClock::now();
+    if(now - pre > 100ms) {
+      c620_array[4].set_raw_tgt_current(0);
+    } else if(pid.get_target() == 1570.0f) {
+      c620_array[4].set_raw_tgt_current(-4000);
+    } else {
+      c620_array[4].set_raw_tgt_current(2000);
+    }
+    // printf("tag:% 4d ", c620_array[4].get_raw_tgt_current());
+  }
+  PidController pid = {PidGain{.kp = 1.0, .max = 0.9, .min = -0.9}};
+  decltype(HighResClock::now()) pre = HighResClock::now();
+  // float origin = 0;
+} arm_angle;
+// struct ArmAngle {
+//   void task() {
+//     // 4
+//     bool lim = !limit_sw[3];
+//     if(state == Waiting && lim) {
+//       origin = c620_array[4].get_ang_vel();
+//       state = Running;
+//     }
+//     auto now = HighResClock::now();
+//     if(state == Running) {
+//       pid.update(c620_array[4].get_ang_vel() - origin, now - pre);
+//       c620_array[4].set_raw_tgt_current(pid.get_output());
+//     }
+//     pre = now;
+//   }
+//   enum {
+//     Waiting,
+//     Running,
+//   } state;
+//   PidController pid = {PidGain{.kp = 1.0, .max = 0.9, .min = -0.9}};
+//   decltype(HighResClock::now()) pre = HighResClock::now();
+//   float origin = 0;
+// } arm_angle;
+struct ArmLength {
+  void task() {
+    // bool lim = !limit_sw[8];
+    auto now = HighResClock::now();
+    if(now - pre < 100ms) {
+      fp_mech[0][2].set_duty(duty);
+    } else {
+      fp_mech[0][2].set_duty(0);
+    }
+  }
+  decltype(HighResClock::now()) pre = HighResClock::now();
+  int16_t duty = 0;
+} arm_length;
+// struct ArmLength {
+//   void task() {
+//     // 9
+//     bool lim = !limit_sw[8];
+//     if(state == Waiting && lim) {
+//       origin = fp_mech[0][2].get_enc();
+//       state = Running;
+//     }
+//     auto now = HighResClock::now();
+//     if(state == Running) {
+//       pid.update(fp_mech[0][2].get_enc(), now - pre);
+//       fp_mech[0][2].set_duty(pid.get_output());
+//     }
+//     pre = now;
+//   }
+//   enum {
+//     Waiting,
+//     Running,
+//   } state;
+//   PidController pid = {PidGain{.kp = 0.1, .max = 0.9, .min = -0.9}};
+//   decltype(HighResClock::now()) pre = HighResClock::now();
+//   float origin = 0;
+// } arm_length;
+struct LargeWheel {
+  void task() {
+    fp_mech[0][0].set_raw_duty(duty);
+    fp_mech[0][1].set_raw_duty(-duty);
+    fp_mech[1][2].set_raw_duty(duty);
+    fp_mech[1][3].set_raw_duty(-duty);
+  }
+  int16_t duty;
+} large_wheel;
+
+void mech_task() {
+  donfan.task();
+  expander.task();
+  collector.task();
+  arm_angle.task();
+  arm_length.task();
+  large_wheel.task();
+}
+
 int main() {
   printf("start\n");
 
@@ -156,8 +313,8 @@ int main() {
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
-    steer_controller.set_steer_gain(controller.get_steer_gain());
-    steer_controller.set_drive_gain(controller.get_drive_gain());
+    // steer_controller.set_steer_gain(controller.get_steer_gain());
+    // steer_controller.set_drive_gain(controller.get_drive_gain());
     steer_controller.reset();
   });
 
@@ -183,23 +340,34 @@ int main() {
     steer_controller.start_unwinding();
   });
 
-  controller.on_donfan([](int8_t) {
-    printf("donfan");
+  controller.on_donfan([](int8_t dir) {
+    printf("donfan % 2d\n", dir);
+    donfan.dir = dir;
   });
-  controller.on_expander([](bool) {
-    printf("expander");
+  controller.on_expander([](int16_t height) {
+    expander.pid.set_target(height);
+    printf("expander %d\n", height);
   });
-  controller.on_collector([](int16_t) {
-    printf("collector");
+  controller.on_collector([](bool collect) {
+    printf("collector %1d\n", collect);
+    collector.collecting = collect;
   });
-  controller.on_arm_angle([](int16_t) {
-    printf("arm_angle");
+  controller.on_arm_angle([](int16_t angle) {
+    printf("arm_angle %d\n", angle);
+    arm_angle.pid.set_target(angle);
+    arm_angle.pre = HighResClock::now();
   });
-  controller.on_arm_length([](int16_t) {
-    printf("arm_length");
+  controller.on_arm_length([](int16_t length) {
+    printf("arm_length %d\n", length);
+    arm_length.pre = HighResClock::now();
+    static auto pre = length;
+    arm_length.duty = (length - pre) * 20;
+    pre = length;
+    // arm_length.pid.set_target(length);
   });
-  controller.on_large_wheel([](int16_t) {
-    printf("large_wheel");
+  controller.on_large_wheel([](int16_t duty) {
+    printf("large_wheel %d\n", duty);
+    large_wheel.duty = duty;
   });
 
   front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
@@ -216,6 +384,8 @@ int main() {
   Timer dt_timer;
   dt_timer.start();
   ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
+
+  controller.activate();
 
   while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
@@ -263,9 +433,11 @@ int main() {
       } break;
     }
 
+    mech_task();
     write_can();
 
     do {
+      read_can();
       flush_can_buffer();
     } while(loop_period > dt_timer.elapsed_time());
   }
