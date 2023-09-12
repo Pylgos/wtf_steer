@@ -1,5 +1,6 @@
 #include <mbed.h>
 
+#include <advanced_can.hpp>
 #include <amt21.hpp>
 #include <anglelib.hpp>
 #include <c620.hpp>
@@ -23,15 +24,15 @@ static constexpr float wheel_radius = 0.05;
 
 BufferedSerial pc{USBTX, USBRX, 115200};
 Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
-RawCAN can1{PA_11, PA_12, (int)1e6};
-CAN can2{PB_12, PB_13, (int)1e6};
+AdvancedCAN can1;
+AdvancedCAN can2;
 Timer timer;
 
 C620Array c620_array;
-C620* const front_left_drive_motor = &c620_array[0];
-C620* const rear_left_drive_motor = &c620_array[1];
-C620* const rear_right_drive_motor = &c620_array[2];
-C620* const front_right_drive_motor = &c620_array[3];
+C620* const front_left_drive_motor = &c620_array[2];
+C620* const rear_left_drive_motor = &c620_array[3];
+C620* const rear_right_drive_motor = &c620_array[0];
+C620* const front_right_drive_motor = &c620_array[1];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
@@ -43,10 +44,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[1];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
-Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
-Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
-Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-11.70)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(14.94)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(10.20)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(87.01)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -58,6 +59,7 @@ void can_push(const CANMessage& msg) {
 }
 
 void flush_can_buffer() {
+  if (!can1.isOpened()) return;
   CANMessage buffered_msg;
   while(can_write_buffer.peek(buffered_msg)) {
     if(can1.write(buffered_msg)) {
@@ -72,27 +74,66 @@ Controller controller{can_push};
 
 Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
 
-void write_can() {
-  const auto fp_msg = first_penguin_array.to_msg();
-  if(!can1.write(fp_msg)) {
-    printf("failed to write first penguin msg\n");
+bool try_init_can() {
+  bool both_initilized = true;
+
+  if(!can1.isOpened()) {
+    if(can1.init(PA_11, PA_12, (int)1e6)) {
+      printf("can1 was initialized\n");
+      can1.attach(
+          []() {
+            CANMessage msg;
+            if(can1.read(msg)) {
+              can_read_buffer.push(msg);
+            }
+          },
+          RawCAN::RxIrq);
+    } else {
+      both_initilized = false;
+    }
   }
 
-  const auto c620_msgs = c620_array.to_msgs();
-  if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
-    // printf("failed to write c620 msg\n");
+  if(!can2.isOpened()) {
+    if (can2.init(PB_12, PB_13, (int)1e6)) {
+      printf("can2 was initialized\n");
+    } else {
+      both_initilized = false;
+    }
+  }
+
+  return both_initilized;
+}
+
+void write_can() {
+  try_init_can();
+
+  if (can1.isOpened()) {
+    const auto fp_msg = first_penguin_array.to_msg();
+    if(!can1.write(fp_msg)) {
+      printf("failed to write first penguin msg\n");
+    }
+  }
+
+  if (can2.isOpened()) {
+    const auto c620_msgs = c620_array.to_msgs();
+    if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
+      // printf("failed to write c620 msg\n");
+    }
   }
 }
 
 void read_can() {
+  try_init_can();
   CANMessage msg;
 
   while (can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
   }
 
-  if(can2.read(msg)) {
-    c620_array.parse_packet(msg);
+  if (can2.isOpened()) {
+    if(can2.read(msg)) {
+      c620_array.parse_packet(msg);
+    }
   }
 }
 
@@ -111,12 +152,7 @@ int update_steer_encoders() {
 int main() {
   printf("start\n");
 
-  can1.attach([](){
-    CANMessage msg;
-    if (can1.read(msg)) {
-      can_read_buffer.push(msg);
-    }
-  }, RawCAN::RxIrq);
+  try_init_can();
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
@@ -147,10 +183,10 @@ int main() {
     steer_controller.start_unwinding();
   });
 
-  front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  front_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  rear_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  rear_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  front_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
 
   for(const auto mot: steer_motors) {
     mot->set_invert(true);
