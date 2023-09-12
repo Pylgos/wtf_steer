@@ -260,41 +260,32 @@ struct ArmAngle {
 //   float origin = 0;
 // } arm_angle;
 struct ArmLength {
+  static constexpr int enc_interval = 23000;
   void task() {
-    // bool lim = !limit_sw[8];
-    auto now = HighResClock::now();
-    if(now - pre < 100ms) {
-      fp_mech[0][2].set_duty(duty);
-    } else {
-      fp_mech[0][2].set_duty(0);
+    // 9
+    bool lim = !limit_sw[8];
+    if(state == Waiting && lim) {
+      origin = fp_mech[0][2].get_enc();
+      state = Running;
+      pre = HighResClock::now();
+    } else if(state == Running) {
+      auto now = HighResClock::now();
+      pid.update((fp_mech[0][2].get_enc() - origin) / enc_interval, now - pre);
+      fp_mech[0][2].set_duty(pid.get_output());
+      pre = now;
     }
   }
-  decltype(HighResClock::now()) pre = HighResClock::now();
-  int16_t duty = 0;
+  void set_target(int16_t length) {
+    pid.set_target((float)length / enc_interval);
+  }
+  enum {
+    Waiting,
+    Running,
+  } state;
+  PidController pid = {PidGain{.kp = 0.5, .max = 0.9, .min = -0.9}};
+  decltype(HighResClock::now()) pre = {};
+  int32_t origin = 0;
 } arm_length;
-// struct ArmLength {
-//   void task() {
-//     // 9
-//     bool lim = !limit_sw[8];
-//     if(state == Waiting && lim) {
-//       origin = fp_mech[0][2].get_enc();
-//       state = Running;
-//     }
-//     auto now = HighResClock::now();
-//     if(state == Running) {
-//       pid.update(fp_mech[0][2].get_enc(), now - pre);
-//       fp_mech[0][2].set_duty(pid.get_output());
-//     }
-//     pre = now;
-//   }
-//   enum {
-//     Waiting,
-//     Running,
-//   } state;
-//   PidController pid = {PidGain{.kp = 0.1, .max = 0.9, .min = -0.9}};
-//   decltype(HighResClock::now()) pre = HighResClock::now();
-//   float origin = 0;
-// } arm_length;
 struct LargeWheel {
   void task() {
     duty += (tag_duty - duty) / 2;
@@ -369,11 +360,7 @@ int main() {
   });
   controller.on_arm_length([](int16_t length) {
     printf("arm_length %d\n", length);
-    arm_length.pre = HighResClock::now();
-    static auto pre = length;
-    arm_length.duty = (length - pre) * 60;
-    pre = length;
-    // arm_length.pid.set_target(length);
+    arm_length.set_target(length);
   });
   controller.on_large_wheel([](int16_t duty) {
     printf("large_wheel %d\n", duty);
