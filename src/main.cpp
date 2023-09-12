@@ -297,11 +297,13 @@ struct ArmLength {
 // } arm_length;
 struct LargeWheel {
   void task() {
+    duty += (tag_duty - duty) / 2;
     fp_mech[0][0].set_raw_duty(duty);
     fp_mech[0][1].set_raw_duty(-duty);
     fp_mech[1][2].set_raw_duty(duty);
     fp_mech[1][3].set_raw_duty(-duty);
   }
+  int16_t tag_duty;
   int16_t duty;
 } large_wheel;
 
@@ -375,7 +377,7 @@ int main() {
   });
   controller.on_large_wheel([](int16_t duty) {
     printf("large_wheel %d\n", duty);
-    large_wheel.duty = duty;
+    large_wheel.tag_duty = duty;
   });
 
   controller.on_donfan([](int8_t) {
