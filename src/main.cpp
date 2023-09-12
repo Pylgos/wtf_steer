@@ -46,10 +46,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-11.70)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(14.94)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(10.20)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(87.01)};
+Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
+Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
+Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
+Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -75,7 +75,7 @@ void flush_can_buffer() {
 Controller controller{can_push};
 
 Steer4WController steer_controller{
-    PidGain{.kp = 0.5, .max = 0.9, .min = -0.9, .anti_windup = true},
+    PidGain{.kp = 0.65, .ki = 0.1, .max = 0.9, .min = -0.9, .anti_windup = true},
     // PidGain{.kp = 1.0, .max = 0.9, .min = -0.9},
     PidGain{.kp = 4.0, .ki = 4.0, .max = 40.0, .min = -40.0, .anti_windup = true},
     // PidGain{.kp = 1.0, .ki = 0.1, .max = 20.0, .min = -20.0},
@@ -183,7 +183,7 @@ struct Expander {
     fp_mech[0][3].set_duty(-pid.get_output());
     pre = now;
   }
-  PidController pid = {PidGain{.kp = 0.0005, .max = 0.9, .min = -0.9}};
+  PidController pid = {PidGain{.kp = 0.0015, .max = 0.9, .min = -0.9}};
   decltype(HighResClock::now()) pre = HighResClock::now();
 } expander;
 struct Collector {
@@ -204,7 +204,7 @@ struct Collector {
         break;
       case Running:
       case Storing:
-        fp_mech[1][0].set_raw_duty(8000);
+        fp_mech[1][0].set_raw_duty(-8000);
         break;
     }
   }
@@ -223,9 +223,9 @@ struct ArmAngle {
     if(now - pre > 100ms) {
       c620_array[4].set_raw_tgt_current(0);
     } else if(pid.get_target() == 1570.0f) {
-      c620_array[4].set_raw_tgt_current(-4000);
+      c620_array[4].set_raw_tgt_current(-3000);
     } else {
-      c620_array[4].set_raw_tgt_current(2000);
+      c620_array[4].set_raw_tgt_current(3500);
     }
     // printf("tag:% 4d ", c620_array[4].get_raw_tgt_current());
   }
@@ -366,7 +366,7 @@ int main() {
     printf("arm_length %d\n", length);
     arm_length.pre = HighResClock::now();
     static auto pre = length;
-    arm_length.duty = (length - pre) * 20;
+    arm_length.duty = (length - pre) * 60;
     pre = length;
     // arm_length.pid.set_target(length);
   });
