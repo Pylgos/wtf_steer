@@ -26,3 +26,6 @@ jobs:
 
       - name: Build PlatformIO Project
         run: pio run
+      
+      - name: Run Unit Test
+        run: pio test -e native
