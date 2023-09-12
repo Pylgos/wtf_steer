@@ -192,12 +192,13 @@ struct Collector {
   void task() {
     // 3
     bool lim = !limit_sw[2];
-    if(collecting) {
+    if(state != Storing && collecting) {
       state = Running;
     } else if(state == Stop || lim) {
       state = Stop;
     } else {
       state = Storing;
+      collecting = false;
     }
 
     switch(state) {
