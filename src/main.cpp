@@ -30,10 +30,10 @@ Timer timer;
 DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
-C620* const front_left_drive_motor = &c620_array[0];
-C620* const rear_left_drive_motor = &c620_array[1];
-C620* const rear_right_drive_motor = &c620_array[2];
-C620* const front_right_drive_motor = &c620_array[3];
+C620* const front_left_drive_motor = &c620_array[2];
+C620* const rear_left_drive_motor = &c620_array[3];
+C620* const rear_right_drive_motor = &c620_array[0];
+C620* const front_right_drive_motor = &c620_array[1];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
@@ -46,10 +46,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(68.599)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.272)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-25.620)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.665)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-11.70)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(14.94)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(10.20)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(87.01)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -380,10 +380,10 @@ int main() {
     large_wheel.tag_duty = duty;
   });
 
-  front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  front_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  rear_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  rear_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  front_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
 
   for(const auto mot: steer_motors) {
     mot->set_invert(true);
