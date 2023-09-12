@@ -46,10 +46,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-23.51)};
-Amt21 rear_left_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-21.40)};
-Amt21 rear_right_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-62.45)};
-Amt21 front_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(9.14)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-11.70)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(14.94)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(10.20)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(87.01)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -378,25 +378,6 @@ int main() {
   controller.on_large_wheel([](int16_t duty) {
     printf("large_wheel %d\n", duty);
     large_wheel.tag_duty = duty;
-  });
-
-  controller.on_donfan([](int8_t) {
-    printf("donfan");
-  });
-  controller.on_expander([](bool) {
-    printf("expander");
-  });
-  controller.on_collector([](int16_t) {
-    printf("collector");
-  });
-  controller.on_arm_angle([](int16_t) {
-    printf("arm_angle");
-  });
-  controller.on_arm_length([](int16_t) {
-    printf("arm_length");
-  });
-  controller.on_large_wheel([](int16_t) {
-    printf("large_wheel");
   });
 
   front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
