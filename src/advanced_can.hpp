@@ -1,3 +1,6 @@
+#ifndef ADVANCED_CAN_HPP
+#define ADVANCED_CAN_HPP
+
 #include "PeripheralPins.h"
 #include "drivers/CAN.h"
 #include "hal/can_api.h"
@@ -242,3 +245,5 @@ class AdvancedCAN : public mbed::interface::can {
   mbed::Callback<void()> _irq[IrqType::IrqCnt];
 #endif
 };
+
+#endif
