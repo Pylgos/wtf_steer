@@ -262,30 +262,31 @@ struct ArmAngle {
 struct ArmLength {
   static constexpr int enc_interval = 23000;
   void task() {
-    // 9
-    bool lim = !limit_sw[8];
-    if(state == Waiting && lim) {
-      origin = fp_mech[0][2].get_enc();
+    // リミットスイッチが押されたら原点を初期化
+    if(state == Waiting && !lim->read()) {
+      origin = fp->get_enc();
       state = Running;
       pre = HighResClock::now();
     } else if(state == Running) {
       auto now = HighResClock::now();
-      pid.update((fp_mech[0][2].get_enc() - origin) / enc_interval, now - pre);
-      fp_mech[0][2].set_duty(pid.get_output());
+      pid.update((fp->get_enc() - origin) / enc_interval, now - pre);
+      fp->set_duty(pid.get_output());
       pre = now;
     }
   }
   void set_target(int16_t length) {
     pid.set_target((float)length / enc_interval);
   }
+  FirstPenguin* fp;
+  DigitalIn* lim;
   enum {
     Waiting,
     Running,
-  } state;
+  } state = Waiting;
   PidController pid = {PidGain{.kp = 0.5, .max = 0.9, .min = -0.9}};
   decltype(HighResClock::now()) pre = {};
   int32_t origin = 0;
-} arm_length;
+} arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]};
 struct LargeWheel {
   void task() {
     duty += (tag_duty - duty) / 2;
