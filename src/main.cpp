@@ -23,7 +23,7 @@ static constexpr float wheel_radius = 0.05;
 
 BufferedSerial pc{USBTX, USBRX, 115200};
 Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
-CAN can1{PA_11, PA_12, (int)1e6};
+RawCAN can1{PA_11, PA_12, (int)1e6};
 CAN can2{PB_12, PB_13, (int)1e6};
 Timer timer;
 
@@ -51,6 +51,7 @@ std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
 CircularBuffer<CANMessage, 127> can_write_buffer;
+CircularBuffer<CANMessage, 127> can_read_buffer;
 
 void can_push(const CANMessage& msg) {
   can_write_buffer.push(msg);
@@ -86,7 +87,7 @@ void write_can() {
 void read_can() {
   CANMessage msg;
 
-  if(can1.read(msg)) {
+  while (can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
   }
 
@@ -109,6 +110,13 @@ int update_steer_encoders() {
 
 int main() {
   printf("start\n");
+
+  can1.attach([](){
+    CANMessage msg;
+    if (can1.read(msg)) {
+      can_read_buffer.push(msg);
+    }
+  }, RawCAN::RxIrq);
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
