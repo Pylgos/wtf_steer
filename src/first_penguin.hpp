@@ -43,6 +43,19 @@ class FirstPenguinArray {
  public:
   FirstPenguinArray(uint16_t base_can_id) : base_can_id_{base_can_id} {}
 
+  auto begin() {
+    return ary_.begin();
+  }
+  auto begin() const {
+    return ary_.begin();
+  }
+  auto end() {
+    return ary_.end();
+  }
+  auto end() const {
+    return ary_.end();
+  }
+
   FirstPenguin& operator[](int index) {
     return ary_[index];
   }

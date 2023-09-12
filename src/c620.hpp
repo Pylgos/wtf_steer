@@ -66,6 +66,18 @@ class C620 {
 };
 
 struct C620Array {
+  auto begin() {
+    return ary_.begin();
+  }
+  auto begin() const {
+    return ary_.begin();
+  }
+  auto end() {
+    return ary_.end();
+  }
+  auto end() const {
+    return ary_.end();
+  }
   C620& operator[](int index) {
     return ary_[index];
   }
