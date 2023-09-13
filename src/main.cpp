@@ -162,39 +162,41 @@ int update_steer_encoders() {
 
 struct Donfan {
   void task() {
-    bool lim[2] = {!limit_sw[7], !limit_sw[6]};
+    bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
     if(lim[0] && dir == 1) dir = 0;
     if(lim[1] && dir == -1) dir = 0;
 
     if(dir == 1) {
-      fp_mech[1][1].set_raw_duty(8000);
+      fp->set_raw_duty(8000);
     } else if(dir == -1) {
-      fp_mech[1][1].set_raw_duty(-8000);
+      fp->set_raw_duty(-8000);
     } else {
-      fp_mech[1][1].set_raw_duty(0);
+      fp->set_raw_duty(0);
     }
   }
+  FirstPenguin* fp;
+  DigitalIn* lim_fwd;
+  DigitalIn* lim_rev;
   int8_t dir = 0;
-} donfan;
+} donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]};
 struct Expander {
   void task() {
     // 下10 上6
     // bool lim[2] = {!limit_sw[5], !limit_sw[9]};
     auto now = HighResClock::now();
-    pid.update(-fp_mech[0][3].get_enc(), now - pre);
-    fp_mech[0][3].set_duty(-pid.get_output());
+    pid.update(-fp->get_enc(), now - pre);
+    fp->set_duty(-pid.get_output());
     pre = now;
   }
+  FirstPenguin* fp;
   PidController pid = {PidGain{.kp = 0.0015, .max = 0.9, .min = -0.9}};
   decltype(HighResClock::now()) pre = HighResClock::now();
-} expander;
+} expander = {.fp = &fp_mech[0][3]};
 struct Collector {
   void task() {
-    // 3
-    bool lim = !limit_sw[2];
     if(state != Storing && collecting) {
       state = Running;
-    } else if(state == Stop || lim) {
+    } else if(state == Stop || !lim->read()) {
       state = Stop;
     } else {
       state = Storing;
@@ -203,21 +205,23 @@ struct Collector {
 
     switch(state) {
       case Stop:
-        fp_mech[1][0].set_raw_duty(0);
+        fp->set_raw_duty(0);
         break;
       case Running:
       case Storing:
-        fp_mech[1][0].set_raw_duty(-8000);
+        fp->set_raw_duty(-8000);
         break;
     }
   }
+  FirstPenguin* fp;
+  DigitalIn* lim;
   enum {
     Stop,
     Running,
     Storing,
-  } state;
-  bool collecting;
-} collector;
+  } state = Stop;
+  bool collecting = false;
+} collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]};
 struct ArmAngle {
   void task() {
     // 4
@@ -289,15 +293,16 @@ struct ArmLength {
 } arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]};
 struct LargeWheel {
   void task() {
-    duty += (tag_duty - duty) / 2;
-    fp_mech[0][0].set_raw_duty(duty);
-    fp_mech[0][1].set_raw_duty(-duty);
-    fp_mech[1][2].set_raw_duty(duty);
-    fp_mech[1][3].set_raw_duty(-duty);
+    duty += (tag_duty - duty) / 2;  // ローパスフィルタ
+    fp_arr[0]->set_raw_duty(duty);
+    fp_arr[1]->set_raw_duty(-duty);
+    fp_arr[2]->set_raw_duty(duty);
+    fp_arr[3]->set_raw_duty(-duty);
   }
-  int16_t tag_duty;
-  int16_t duty;
-} large_wheel;
+  FirstPenguin* fp_arr[4];
+  int16_t tag_duty = 0;
+  int16_t duty = 0;
+} large_wheel = {.fp_arr = {&fp_mech[0][0], &fp_mech[0][1], &fp_mech[1][2], &fp_mech[1][3]}};
 
 void mech_task() {
   donfan.task();
