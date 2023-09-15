@@ -223,46 +223,54 @@ struct Collector {
   bool collecting = false;
 } collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]};
 struct ArmAngle {
+  static constexpr int enc_interval = 3800;
+  static constexpr int deg2enc = enc_interval / (100 - -60);
+  // -60deg -> 100deg
+  static constexpr float enc_to_rad = M_PI / enc_interval;
+  static constexpr float enc_to_mrad = enc_to_rad * 1000;
   void task() {
-    // 4
-    // bool lim = !limit_sw[3];
-    auto now = HighResClock::now();
-    if(now - pre > 100ms) {
-      c620_array[4].set_raw_tgt_current(0);
-    } else if(pid.get_target() == 1570.0f) {
-      c620_array[4].set_raw_tgt_current(-3000);
-    } else {
-      c620_array[4].set_raw_tgt_current(3500);
+    if(state == Waiting && !lim->read()) {
+      // 原点セット
+      origin = fp->get_enc() + 60 * deg2enc;
+      state = Running;
+      pre = HighResClock::now();
+    } else if(state == Waiting && !std::isnan(target_angle)) {
+      // キャリブレーション
+      c620->set_raw_tgt_current(2000);
+    } else if(state == Running) {
+      auto now = HighResClock::now();
+      chrono::duration<float> dt = now - set_time;
+      float t = std::clamp(dt.count(), 0.0f, 1.0f);
+      if(std::isnan(pre_tgt_angle)) pre_tgt_angle = 0;
+      float new_tag_angle = std::lerp(pre_tgt_angle, target_angle, t);
+      pid.set_target(new_tag_angle);
+      auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
+      pid.update(present_rad * 1000, now - pre);
+      float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
+      c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -6000.0f, 6000.0f));
+      pre = now;
     }
-    // printf("tag:% 4d ", c620_array[4].get_raw_tgt_current());
   }
-  PidController pid = {PidGain{.kp = 1.0, .max = 0.9, .min = -0.9}};
-  decltype(HighResClock::now()) pre = HighResClock::now();
-  // float origin = 0;
-} arm_angle;
-// struct ArmAngle {
-//   void task() {
-//     // 4
-//     bool lim = !limit_sw[3];
-//     if(state == Waiting && lim) {
-//       origin = c620_array[4].get_ang_vel();
-//       state = Running;
-//     }
-//     auto now = HighResClock::now();
-//     if(state == Running) {
-//       pid.update(c620_array[4].get_ang_vel() - origin, now - pre);
-//       c620_array[4].set_raw_tgt_current(pid.get_output());
-//     }
-//     pre = now;
-//   }
-//   enum {
-//     Waiting,
-//     Running,
-//   } state;
-//   PidController pid = {PidGain{.kp = 1.0, .max = 0.9, .min = -0.9}};
-//   decltype(HighResClock::now()) pre = HighResClock::now();
-//   float origin = 0;
-// } arm_angle;
+  void set_target(int16_t angle) {
+    if(target_angle == angle) return;
+    pre_tgt_angle = target_angle;
+    target_angle = angle;
+    set_time = HighResClock::now();
+  }
+  C620* c620;
+  FirstPenguin* fp;
+  DigitalIn* lim;
+  enum {
+    Waiting,
+    Running,
+  } state;
+  PidController pid = {PidGain{.kp = 0.4e-3, .ki = 0.03e-3, .max = 0.9, .min = -0.9}};
+  decltype(HighResClock::now()) pre = {};
+  decltype(HighResClock::now()) set_time = {};
+  float pre_tgt_angle = NAN;
+  float target_angle = NAN;
+  int32_t origin = 0;
+} arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]};
 struct ArmLength {
   static constexpr int enc_interval = 23000;
   void task() {
@@ -361,8 +369,7 @@ int main() {
   });
   controller.on_arm_angle([](int16_t angle) {
     printf("arm_angle %d\n", angle);
-    arm_angle.pid.set_target(angle);
-    arm_angle.pre = HighResClock::now();
+    arm_angle.set_target(angle);
   });
   controller.on_arm_length([](int16_t length) {
     printf("arm_length %d\n", length);
