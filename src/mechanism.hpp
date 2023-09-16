@@ -119,6 +119,8 @@ struct Mechanism {
   };
   struct ArmLength {
     static constexpr int enc_interval = 23000;
+    static constexpr int max_length = 900;
+    static constexpr float enc_to_mm = (float)max_length / enc_interval;
     void task() {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
@@ -127,13 +129,13 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Running) {
         auto now = HighResClock::now();
-        pid.update((fp->get_enc() - origin) / enc_interval, now - pre);
+        pid.update((fp->get_enc() - origin) * enc_to_mm, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
       }
     }
     void set_target(int16_t length) {
-      pid.set_target((float)length / enc_interval);
+      pid.set_target(length);
     }
     FirstPenguin* fp;
     DigitalIn* lim;
