@@ -115,8 +115,8 @@ class Controller {
       case Command::Tag::SET_DONFAN_CMD:
         call(on_donfan_, cmd.set_donfan_cmd.dir);
         break;
-      case Command::Tag::SET_EXPANDER_CMD:
-        call(on_expander_, cmd.set_expander_cmd.cmd);
+      case Command::Tag::SET_EXPANDER_LENGTH:
+        call(on_expander_, cmd.set_expander_length.length);
         break;
       case Command::Tag::SET_COLLECTOR_CMD:
         call(on_collector_, cmd.set_collector_cmd.enable);
