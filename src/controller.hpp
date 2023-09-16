@@ -277,7 +277,7 @@ class Controller {
   }
 
   bool is_timeout(std::chrono::microseconds now) {
-    return false;
+    return now - last_cmd_received_ > 100ms;
   }
 
   State get_state() {
