@@ -8,6 +8,16 @@
 #include <pid_controller.hpp>
 
 struct Mechanism {
+  void set_arm_angle_gain(PidGain gain) {
+    arm_angle.pid.set_gain(gain);
+  }
+  void set_arm_length_gain(PidGain gain) {
+    arm_length.pid.set_gain(gain);
+  }
+  void set_expander_gain(PidGain gain) {
+    expander.pid.set_gain(gain);
+  }
+
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};

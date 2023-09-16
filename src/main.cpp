@@ -179,6 +179,9 @@ int main() {
     printf("pid reset\n");
     // steer_controller.set_steer_gain(controller.get_steer_gain());
     // steer_controller.set_drive_gain(controller.get_drive_gain());
+    // mech.set_arm_length_gain(controller.get_arm_length_gain());
+    // mech.set_arm_angle_gain(controller.get_arm_angle_gain());
+    // mech.set_expander_gain(controller.get_expander_gain());
     steer_controller.reset();
   });
 
