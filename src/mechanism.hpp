@@ -92,10 +92,12 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target_angle)) {
         // キャリブレーション
-        c620->set_raw_tgt_current(2000);
+        c620->set_raw_tgt_current(1500);
       } else if(state == Running) {
         auto now = HighResClock::now();
+        if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
         chrono::duration<float> dt = now - set_time;
+        dt /= 1.3;
         float t = std::clamp(dt.count(), 0.0f, 1.0f);
         if(std::isnan(pre_tgt_angle)) pre_tgt_angle = 0;
         float new_tag_angle = std::lerp(pre_tgt_angle, target_angle, t);
@@ -103,7 +105,7 @@ struct Mechanism {
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
         pid.update(present_rad, now - pre);
         float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
-        c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -6000.0f, 6000.0f));
+        c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         pre = now;
       }
     }
