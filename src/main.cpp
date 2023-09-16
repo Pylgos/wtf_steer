@@ -75,12 +75,7 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{
-    PidGain{.kp = 0.4, .ki = 0.1, .max = 0.9, .min = -0.9, .anti_windup = true},
-    // PidGain{.kp = 1.0, .max = 0.9, .min = -0.9},
-    PidGain{.kp = 4.0, .ki = 4.0, .max = 40.0, .min = -40.0, .anti_windup = true},
-    // PidGain{.kp = 1.0, .ki = 0.1, .max = 20.0, .min = -20.0},
-    wheel_radius, Vec2f(0.201, 0.201)};
+Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
 
 bool try_init_can() {
   bool both_initilized = true;

@@ -66,7 +66,7 @@ struct Mechanism {
       Waiting,
       Running,
     } state = Waiting;
-    PidController pid = {PidGain{.kp = 0.0015, .max = 0.9, .min = -0.9}};
+    PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = HighResClock::now();
     int32_t origin = 0;
   };
@@ -144,7 +144,7 @@ struct Mechanism {
       Waiting,
       Running,
     } state;
-    PidController pid = {PidGain{.kp = 0.4e-3, .ki = 0.03e-3, .max = 0.9, .min = -0.9}};
+    PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     decltype(HighResClock::now()) set_time = {};
     float pre_tgt_angle = NAN;
@@ -180,7 +180,7 @@ struct Mechanism {
       Waiting,
       Running,
     } state = Waiting;
-    PidController pid = {PidGain{.kp = 0.5, .max = 0.9, .min = -0.9}};
+    PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     int32_t origin = 0;
   };
