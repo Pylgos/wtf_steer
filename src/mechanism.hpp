@@ -127,6 +127,9 @@ struct Mechanism {
         origin = fp->get_enc();
         state = Running;
         pre = HighResClock::now();
+      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+        // キャリブレーション
+        fp->set_duty(3000);
       } else if(state == Running) {
         auto now = HighResClock::now();
         pid.update((fp->get_enc() - origin) * enc_to_mm, now - pre);
