@@ -38,15 +38,37 @@ struct Mechanism {
     int8_t dir = 0;
   };
   struct Expander {
+    static constexpr int enc_interval = -1474;
+    static constexpr float normalization = 1.0f / enc_interval;
     void task() {
-      auto now = HighResClock::now();
-      pid.update(-fp->get_enc(), now - pre);
-      fp->set_duty(-pid.get_output());
-      pre = now;
+      if(state == Waiting && !lim->read()) {
+        // 原点合わせ
+        origin = fp->get_enc();
+        state = Running;
+        pre = HighResClock::now();
+      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+        fp->set_duty(-3000);
+      } else if(state == Running) {
+        // キャリブレーション
+        if(!lim->read()) origin = fp->get_enc();
+        auto now = HighResClock::now();
+        pid.update((fp->get_enc() - origin) * normalization, now - pre);
+        fp->set_duty(-pid.get_output());
+        pre = now;
+      }
+    }
+    void set_target(int16_t height) {
+      pid.set_target(height / 900.0f);
     }
     FirstPenguin* fp;
+    DigitalIn* lim;
+    enum {
+      Waiting,
+      Running,
+    } state = Waiting;
     PidController pid = {PidGain{.kp = 0.0015, .max = 0.9, .min = -0.9}};
     decltype(HighResClock::now()) pre = HighResClock::now();
+    int32_t origin = 0;
   };
   struct Collector {
     void task() {

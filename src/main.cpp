@@ -163,7 +163,7 @@ int update_steer_encoders() {
 
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
-    .expander = {.fp = &fp_mech[0][3]},
+    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9]},
     .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
     .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
@@ -212,7 +212,7 @@ int main() {
     mech.donfan.dir = dir;
   });
   controller.on_expander([](int16_t height) {
-    mech.expander.pid.set_target(height);
+    mech.expander.set_target(height);
     printf("expander %d\n", height);
   });
   controller.on_collector([](bool collect) {
