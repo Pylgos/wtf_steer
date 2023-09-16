@@ -39,10 +39,10 @@ const std::array<C620*, 4> drive_motors = {
 
 FirstPenguinArray first_penguin_array{40};
 FirstPenguinArray fp_mech[] = {{30}, {35}};
-FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
-FirstPenguin* const rear_left_steer_motor = &first_penguin_array[3];
-FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
-FirstPenguin* const front_right_steer_motor = &first_penguin_array[1];
+FirstPenguin* const front_left_steer_motor = &first_penguin_array[2];
+FirstPenguin* const rear_left_steer_motor = &first_penguin_array[1];
+FirstPenguin* const rear_right_steer_motor = &first_penguin_array[0];
+FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
@@ -61,7 +61,7 @@ void can_push(const CANMessage& msg) {
 }
 
 void flush_can_buffer() {
-  if (!can1.isOpened()) return;
+  if(!can1.isOpened()) return;
   CANMessage buffered_msg;
   while(can_write_buffer.peek(buffered_msg)) {
     if(can1.write(buffered_msg)) {
@@ -74,7 +74,12 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
+Steer4WController steer_controller{
+    PidGain{.kp = 0.5, .max = 0.9, .min = -0.9, .anti_windup = true},
+    // PidGain{.kp = 1.0, .max = 0.9, .min = -0.9},
+    PidGain{.kp = 4.0, .ki = 4.0, .max = 40.0, .min = -40.0, .anti_windup = true},
+    // PidGain{.kp = 1.0, .ki = 0.1, .max = 20.0, .min = -20.0},
+    wheel_radius, Vec2f(0.201, 0.201)};
 
 bool try_init_can() {
   bool both_initilized = true;
@@ -96,7 +101,7 @@ bool try_init_can() {
   }
 
   if(!can2.isOpened()) {
-    if (can2.init(PB_12, PB_13, (int)1e6)) {
+    if(can2.init(PB_12, PB_13, (int)1e6)) {
       printf("can2 was initialized\n");
     } else {
       both_initilized = false;
@@ -109,14 +114,14 @@ bool try_init_can() {
 void write_can() {
   try_init_can();
 
-  if (can1.isOpened()) {
+  if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
     if(!can1.write(fp_msg)) {
       printf("failed to write first penguin msg\n");
     }
   }
 
-  if (can2.isOpened()) {
+  if(can2.isOpened()) {
     const auto c620_msgs = c620_array.to_msgs();
     if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
       // printf("failed to write c620 msg\n");
@@ -128,13 +133,13 @@ void read_can() {
   try_init_can();
   CANMessage msg;
 
-  while (can_read_buffer.pop(msg)) {
+  while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
     fp_mech[0].parse_packet(msg);
     fp_mech[1].parse_packet(msg);
   }
 
-  if (can2.isOpened()) {
+  if(can2.isOpened()) {
     if(can2.read(msg)) {
       c620_array.parse_packet(msg);
     }
