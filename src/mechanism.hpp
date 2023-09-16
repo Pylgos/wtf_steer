@@ -101,7 +101,7 @@ struct Mechanism {
         float new_tag_angle = std::lerp(pre_tgt_angle, target_angle, t);
         pid.set_target(new_tag_angle);
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
-        pid.update(present_rad * 1000, now - pre);
+        pid.update(present_rad, now - pre);
         float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
         c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -6000.0f, 6000.0f));
         pre = now;
@@ -110,7 +110,7 @@ struct Mechanism {
     void set_target(int16_t angle) {
       if(target_angle == angle) return;
       pre_tgt_angle = target_angle;
-      target_angle = angle;
+      target_angle = angle * 1e-3;
       set_time = HighResClock::now();
     }
     C620* c620;
@@ -130,7 +130,7 @@ struct Mechanism {
   struct ArmLength {
     static constexpr int enc_interval = 23000;
     static constexpr int max_length = 900;
-    static constexpr float enc_to_mm = (float)max_length / enc_interval;
+    static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task() {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
@@ -142,13 +142,13 @@ struct Mechanism {
         fp->set_duty(3000);
       } else if(state == Running) {
         auto now = HighResClock::now();
-        pid.update((fp->get_enc() - origin) * enc_to_mm, now - pre);
+        pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
       }
     }
     void set_target(int16_t length) {
-      pid.set_target(length);
+      pid.set_target(length * 1e-3);
     }
     FirstPenguin* fp;
     DigitalIn* lim;
