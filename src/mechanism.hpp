@@ -166,6 +166,7 @@ struct Mechanism {
         fp->set_duty(-3000);
       } else if(state == Running) {
         auto now = HighResClock::now();
+        if(!lim->read()) origin = fp->get_enc();
         pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
