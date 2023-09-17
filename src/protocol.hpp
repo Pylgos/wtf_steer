@@ -47,6 +47,33 @@ enum ParamId : uint8_t {
   STEER1_OFFSET,
   STEER2_OFFSET,
   STEER3_OFFSET,
+
+  // お助け角制御のPIDゲイン
+  ARM_ANGLE_KP,
+  ARM_ANGLE_KI,
+  ARM_ANGLE_KD,
+  ARM_ANGLE_MAX,
+  ARM_ANGLE_MIN,
+  ARM_ANGLE_ANTIWINDUP,
+  ARM_ANGLE_USE_VELOCITY_FOR_D_TERM,
+
+  // お助け長さ制御のPIDゲイン
+  ARM_LENGTH_KP,
+  ARM_LENGTH_KI,
+  ARM_LENGTH_KD,
+  ARM_LENGTH_MAX,
+  ARM_LENGTH_MIN,
+  ARM_LENGTH_ANTIWINDUP,
+  ARM_LENGTH_USE_VELOCITY_FOR_D_TERM,
+
+  // ロジャー長さ制御のPIDゲイン
+  EXPANDER_KP,
+  EXPANDER_KI,
+  EXPANDER_KD,
+  EXPANDER_MAX,
+  EXPANDER_MIN,
+  EXPANDER_ANTIWINDUP,
+  EXPANDER_USE_VELOCITY_FOR_D_TERM,
 };
 
 
@@ -60,7 +87,7 @@ struct Command {
     RESET_PID,
     SET_TARGET_VELOCITY,
     SET_DONFAN_CMD,
-    SET_EXPANDER_CMD,
+    SET_EXPANDER_LENGTH,
     SET_COLLECTOR_CMD,
     SET_ARM_ANGLE,
     SET_ARM_LENGTH,
@@ -89,8 +116,8 @@ struct Command {
     int8_t dir;  // 1: 正転、 0: 停止、 -1: 逆転
   } PROTOCOL_PACKED;
 
-  struct SetExpanderCmd {
-    int16_t cmd;  // +展開
+  struct SetExpanderLength {
+    int16_t length;  // 長さ　下がりきった状態が0 展開方向が+ [mm]
   } PROTOCOL_PACKED;
 
   struct SetCollectorCmd {
@@ -98,11 +125,11 @@ struct Command {
   } PROTOCOL_PACKED;
 
   struct SetArmAngle {
-    int16_t angle;  // 角度 初期位置が0 前方向が+ [mrad]
+    int16_t angle;  // 角度 水平が0 前方向が+ [mrad]
   } PROTOCOL_PACKED;
 
   struct SetArmLength {
-    int16_t length;  // 長さ 初期位置が0 展開方向が+ [mm]
+    int16_t length;  // 長さ 下がりきった状態が0 展開方向が+ [mm]
   } PROTOCOL_PACKED;
 
   struct SetLargeWheelCmd {
@@ -124,7 +151,7 @@ struct Command {
     SetDonfanCmd set_donfan_cmd;
 
     // ロジャー
-    SetExpanderCmd set_expander_cmd;
+    SetExpanderLength set_expander_length;
 
     // 下から回収
     SetCollectorCmd set_collector_cmd;

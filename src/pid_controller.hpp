@@ -58,6 +58,9 @@ class PidController {
   void set_target(float target) {
     target_ = target;
   }
+  auto get_target() const {
+    return target_;
+  }
 
   float get_output() {
     return output_;

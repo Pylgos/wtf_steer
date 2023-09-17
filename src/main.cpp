@@ -6,6 +6,7 @@
 #include <c620.hpp>
 #include <controller.hpp>
 #include <first_penguin.hpp>
+#include <mechanism.hpp>
 #include <pid_controller.hpp>
 #include <rs485.hpp>
 #include <steer_4w_controller.hpp>
@@ -27,6 +28,7 @@ Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
 AdvancedCAN can1;
 AdvancedCAN can2;
 Timer timer;
+DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
 C620* const front_left_drive_motor = &c620_array[2];
@@ -36,18 +38,19 @@ C620* const front_right_drive_motor = &c620_array[1];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
-FirstPenguinArray first_penguin_array{5};
-FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
-FirstPenguin* const rear_left_steer_motor = &first_penguin_array[3];
-FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
-FirstPenguin* const front_right_steer_motor = &first_penguin_array[1];
+FirstPenguinArray first_penguin_array{40};
+FirstPenguinArray fp_mech[] = {{30}, {35}};
+FirstPenguin* const front_left_steer_motor = &first_penguin_array[2];
+FirstPenguin* const rear_left_steer_motor = &first_penguin_array[1];
+FirstPenguin* const rear_right_steer_motor = &first_penguin_array[0];
+FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-11.70)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(14.94)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(10.20)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(87.01)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-0.18)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(-19.42)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-65.39)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-47.86)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -59,7 +62,7 @@ void can_push(const CANMessage& msg) {
 }
 
 void flush_can_buffer() {
-  if (!can1.isOpened()) return;
+  if(!can1.isOpened()) return;
   CANMessage buffered_msg;
   while(can_write_buffer.peek(buffered_msg)) {
     if(can1.write(buffered_msg)) {
@@ -94,7 +97,7 @@ bool try_init_can() {
   }
 
   if(!can2.isOpened()) {
-    if (can2.init(PB_12, PB_13, (int)1e6)) {
+    if(can2.init(PB_12, PB_13, (int)1e6)) {
       printf("can2 was initialized\n");
     } else {
       both_initilized = false;
@@ -107,14 +110,16 @@ bool try_init_can() {
 void write_can() {
   try_init_can();
 
-  if (can1.isOpened()) {
+  if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
     if(!can1.write(fp_msg)) {
       printf("failed to write first penguin msg\n");
     }
+    can1.write(fp_mech[0].to_msg());
+    can1.write(fp_mech[1].to_msg());
   }
 
-  if (can2.isOpened()) {
+  if(can2.isOpened()) {
     const auto c620_msgs = c620_array.to_msgs();
     if(!can2.write(c620_msgs[0]) || !can2.write(c620_msgs[1])) {
       // printf("failed to write c620 msg\n");
@@ -126,11 +131,13 @@ void read_can() {
   try_init_can();
   CANMessage msg;
 
-  while (can_read_buffer.pop(msg)) {
+  while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
+    fp_mech[0].parse_packet(msg);
+    fp_mech[1].parse_packet(msg);
   }
 
-  if (can2.isOpened()) {
+  if(can2.isOpened()) {
     if(can2.read(msg)) {
       c620_array.parse_packet(msg);
     }
@@ -149,6 +156,15 @@ int update_steer_encoders() {
   return error_count;
 }
 
+Mechanism mech = {
+    .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
+    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9]},
+    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
+    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]},
+    .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
+    .large_wheel = {.fp_arr = {&fp_mech[1][2], &fp_mech[1][3]}, .c620_arr = {&c620_array[5], &c620_array[6]}},
+};
+
 int main() {
   printf("start\n");
 
@@ -158,6 +174,9 @@ int main() {
     printf("pid reset\n");
     steer_controller.set_steer_gain(controller.get_steer_gain());
     steer_controller.set_drive_gain(controller.get_drive_gain());
+    mech.set_arm_length_gain(controller.get_arm_length_gain());
+    mech.set_arm_angle_gain(controller.get_arm_angle_gain());
+    mech.set_expander_gain(controller.get_expander_gain());
     steer_controller.reset();
   });
 
@@ -183,10 +202,35 @@ int main() {
     steer_controller.start_unwinding();
   });
 
-  front_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  rear_left_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
-  rear_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
-  front_right_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  controller.on_donfan([](int8_t dir) {
+    printf("donfan % 2d\n", dir);
+    mech.donfan.dir = dir;
+  });
+  controller.on_expander([](int16_t height) {
+    mech.expander.set_target(height);
+    printf("expander %d\n", height);
+  });
+  controller.on_collector([](bool collect) {
+    printf("collector %1d\n", collect);
+    mech.collector.collecting = collect;
+  });
+  controller.on_arm_angle([](int16_t angle) {
+    printf("arm_angle %d\n", angle);
+    mech.arm_angle.set_target(angle);
+  });
+  controller.on_arm_length([](int16_t length) {
+    printf("arm_length %d\n", length);
+    mech.arm_length.set_target(length);
+  });
+  controller.on_large_wheel([](int16_t duty) {
+    printf("large_wheel %d\n", duty);
+    mech.large_wheel.tag_duty = duty;
+  });
+
+  front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
+  rear_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
+  front_right_drive_motor->set_gear_ratio(drive_motor_gear_ratio);
 
   for(const auto mot: steer_motors) {
     mot->set_invert(true);
@@ -197,6 +241,8 @@ int main() {
   Timer dt_timer;
   dt_timer.start();
   ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
+
+  // controller.activate();
 
   while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
@@ -244,9 +290,11 @@ int main() {
       } break;
     }
 
+    mech.task();
     write_can();
 
     do {
+      read_can();
       flush_can_buffer();
     } while(loop_period > dt_timer.elapsed_time());
   }

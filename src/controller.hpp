@@ -82,6 +82,72 @@ class Controller {
             asgn(steer_gain_.use_velocity_for_d_term, arg.value);
             break;
 
+          case ParamId::ARM_LENGTH_KP:
+            asgn(arm_length_gain_.kp, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_KI:
+            asgn(arm_length_gain_.ki, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_KD:
+            asgn(arm_length_gain_.kd, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_MAX:
+            asgn(arm_length_gain_.max, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_MIN:
+            asgn(arm_length_gain_.min, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_ANTIWINDUP:
+            asgn(arm_length_gain_.anti_windup, arg.value);
+            break;
+          case ParamId::ARM_LENGTH_USE_VELOCITY_FOR_D_TERM:
+            asgn(arm_length_gain_.use_velocity_for_d_term, arg.value);
+            break;
+
+          case ParamId::ARM_ANGLE_KP:
+            asgn(arm_angle_gain_.kp, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_KI:
+            asgn(arm_angle_gain_.ki, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_KD:
+            asgn(arm_angle_gain_.kd, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_MAX:
+            asgn(arm_angle_gain_.max, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_MIN:
+            asgn(arm_angle_gain_.min, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_ANTIWINDUP:
+            asgn(arm_angle_gain_.anti_windup, arg.value);
+            break;
+          case ParamId::ARM_ANGLE_USE_VELOCITY_FOR_D_TERM:
+            asgn(arm_angle_gain_.use_velocity_for_d_term, arg.value);
+            break;
+
+          case ParamId::EXPANDER_KP:
+            asgn(expander_gain_.kp, arg.value);
+            break;
+          case ParamId::EXPANDER_KI:
+            asgn(expander_gain_.ki, arg.value);
+            break;
+          case ParamId::EXPANDER_KD:
+            asgn(expander_gain_.kd, arg.value);
+            break;
+          case ParamId::EXPANDER_MAX:
+            asgn(expander_gain_.max, arg.value);
+            break;
+          case ParamId::EXPANDER_MIN:
+            asgn(expander_gain_.min, arg.value);
+            break;
+          case ParamId::EXPANDER_ANTIWINDUP:
+            asgn(expander_gain_.anti_windup, arg.value);
+            break;
+          case ParamId::EXPANDER_USE_VELOCITY_FOR_D_TERM:
+            asgn(expander_gain_.use_velocity_for_d_term, arg.value);
+            break;
+
           case ParamId::STEER0_OFFSET:
             call(on_steer_offset_, 0, Angle::from_rad(arg.value.float_value));
             break;
@@ -109,6 +175,26 @@ class Controller {
         break;
       case Command::Tag::UNWIND_STEER:
         call(on_unwind_);
+        break;
+
+      // mech
+      case Command::Tag::SET_DONFAN_CMD:
+        call(on_donfan_, cmd.set_donfan_cmd.dir);
+        break;
+      case Command::Tag::SET_EXPANDER_LENGTH:
+        call(on_expander_, cmd.set_expander_length.length);
+        break;
+      case Command::Tag::SET_COLLECTOR_CMD:
+        call(on_collector_, cmd.set_collector_cmd.enable);
+        break;
+      case Command::Tag::SET_ARM_ANGLE:
+        call(on_arm_angle_, cmd.set_arm_angle.angle);
+        break;
+      case Command::Tag::SET_ARM_LENGTH:
+        call(on_arm_length_, cmd.set_arm_length.length);
+        break;
+      case Command::Tag::SET_LARGE_WHEEL_CMD:
+        call(on_large_wheel_, cmd.set_large_wheel_cmd.cmd);
         break;
     }
 
@@ -171,9 +257,27 @@ class Controller {
   void on_unwind(std::function<void()> f) {
     on_unwind_ = f;
   }
+  void on_donfan(std::function<void(int8_t)> f) {
+    on_donfan_ = f;
+  }
+  void on_expander(std::function<void(int16_t)> f) {
+    on_expander_ = f;
+  }
+  void on_collector(std::function<void(bool)> f) {
+    on_collector_ = f;
+  }
+  void on_arm_angle(std::function<void(int16_t)> f) {
+    on_arm_angle_ = f;
+  }
+  void on_arm_length(std::function<void(int16_t)> f) {
+    on_arm_length_ = f;
+  }
+  void on_large_wheel(std::function<void(int16_t)> f) {
+    on_large_wheel_ = f;
+  }
 
   bool is_timeout(std::chrono::microseconds now) {
-    return now - last_cmd_received_ > std::chrono::milliseconds(100);
+    return now - last_cmd_received_ > 100ms;
   }
 
   State get_state() {
@@ -190,6 +294,15 @@ class Controller {
   }
   PidGain get_drive_gain() {
     return drive_gain_;
+  }
+  PidGain get_arm_angle_gain() {
+    return arm_angle_gain_;
+  }
+  PidGain get_arm_length_gain() {
+    return arm_length_gain_;
+  }
+  PidGain get_expander_gain() {
+    return expander_gain_;
   }
 
   void publish_steer_unwind_done() {
@@ -209,6 +322,9 @@ class Controller {
   float tgt_ang_vel_ = 0.0;
   PidGain steer_gain_{};
   PidGain drive_gain_{};
+  PidGain arm_length_gain_{};
+  PidGain arm_angle_gain_{};
+  PidGain expander_gain_{};
   Vec2 odom_linear_vel_{0, 0};
   float odom_ang_vel_ = 0;
 
@@ -258,6 +374,12 @@ class Controller {
   std::function<void()> on_deactivation_ = nullptr;
   std::function<void(int idx, anglelib::Anglef offset)> on_steer_offset_ = nullptr;
   std::function<void()> on_unwind_ = nullptr;
+  std::function<void(int8_t)> on_donfan_ = nullptr;
+  std::function<void(int16_t)> on_expander_ = nullptr;
+  std::function<void(bool)> on_collector_ = nullptr;
+  std::function<void(int16_t)> on_arm_angle_ = nullptr;
+  std::function<void(int16_t)> on_arm_length_ = nullptr;
+  std::function<void(int16_t)> on_large_wheel_ = nullptr;
 };
 
 #endif
