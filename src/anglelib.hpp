@@ -60,7 +60,7 @@ struct Angle {
     return Angle{2 * PI};
   };
 
-  Angle() : value{0} {}
+  constexpr Angle() : value{0} {}
 
   constexpr explicit Angle(Rep radians) : value{radians} {}
 
@@ -178,7 +178,7 @@ struct Direction {
     return Direction{2 * PI};
   };
 
-  Direction() : value{0} {}
+  constexpr Direction() : value{0} {}
 
   constexpr explicit Direction(Rep radians) {
     value = radians;

@@ -67,7 +67,7 @@ struct Mechanism {
       Running,
     } state = Waiting;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = HighResClock::now();
+    decltype(HighResClock::now()) pre = {};
     int32_t origin = 0;
   };
   struct Collector {
@@ -139,7 +139,7 @@ struct Mechanism {
     enum {
       Waiting,
       Running,
-    } state;
+    } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     float target_angle = NAN;

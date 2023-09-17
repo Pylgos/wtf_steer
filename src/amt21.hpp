@@ -14,7 +14,9 @@ class Amt21 {
 
  public:
   Amt21(Rs485* rs485, uint8_t address, float scale = 1.0, Angle offset = Angle::zero())
-      : rs485_{rs485}, address_{address}, raw_angle_{0}, scale_{scale}, offset_{offset}, angle_{0} {}
+      : rs485_{rs485}, address_{address}, scale_{scale}, offset_{offset} {
+    MBED_ASSERT(rs485);
+  }
 
   Angle get_angle() {
     return angle_;
@@ -49,10 +51,10 @@ class Amt21 {
  private:
   Rs485* rs485_;
   uint8_t address_;
-  Angle raw_angle_;
   float scale_;
   Angle offset_;
-  Angle angle_;
+  Angle angle_ = {};
+  Angle raw_angle_ = {};
 
   static bool is_valid(uint16_t raw_data) {
     auto b = [raw_data](int pos) {
