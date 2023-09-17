@@ -118,13 +118,12 @@ struct Mechanism {
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
-        chrono::duration<float> dt = now - set_time;
-        dt /= 1.3;
-        float t = std::clamp(dt.count(), 0.0f, 1.0f);
-        if(std::isnan(pre_tgt_angle)) pre_tgt_angle = 0;
-        float new_tag_angle = std::lerp(pre_tgt_angle, target_angle, t);
-        pid.set_target(new_tag_angle);
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
+        constexpr float max_omega = M_PI / 4;
+        auto max = max_omega * chrono::duration<float>{now - pre}.count();
+        float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
+        float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
+        pid.set_target(new_tag_angle);
         pid.update(present_rad, now - pre);
         float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
         c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
@@ -132,10 +131,7 @@ struct Mechanism {
       }
     }
     void set_target(int16_t angle) {
-      if(target_angle == angle) return;
-      pre_tgt_angle = target_angle;
       target_angle = angle * 1e-3;
-      set_time = HighResClock::now();
     }
     C620* c620;
     FirstPenguin* fp;
@@ -146,8 +142,6 @@ struct Mechanism {
     } state;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
-    decltype(HighResClock::now()) set_time = {};
-    float pre_tgt_angle = NAN;
     float target_angle = NAN;
     int32_t origin = 0;
   };
