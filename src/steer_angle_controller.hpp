@@ -22,12 +22,12 @@ class SteerAngleController {
       target_angle = home_angle_;
     } else {
       target_angle = present.closest_angle_of(target_dir_);
-      constexpr float max_omega = 6.0f;  // [rad/sec]
-      auto max = Angle{max_omega * std::chrono::duration<float>(dt).count()};
-      float now_tgt = pid_.get_target();
-      if(std::isnan(now_tgt)) now_tgt = 0;
-      target_angle = Angle{now_tgt} + std::clamp(target_angle - Angle{now_tgt}, -max, max);
     }
+    constexpr float max_omega = 4.5f;  // [rad/sec]
+    auto max = Angle{max_omega * std::chrono::duration<float>(dt).count()};
+    float now_tgt = pid_.get_target();
+    if(std::isnan(now_tgt)) now_tgt = 0;
+    target_angle = Angle{now_tgt} + std::clamp(target_angle - Angle{now_tgt}, -max, max);
     pid_.set_target(target_angle.rad());
     pid_.update(present.rad(), dt);
   }
