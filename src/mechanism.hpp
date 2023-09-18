@@ -47,6 +47,7 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
+        printf("exp:calibrate ");
         fp->set_raw_duty(3000);
       } else if(state == Running) {
         if(!lim->read()) origin = fp->get_enc();
@@ -61,6 +62,12 @@ struct Mechanism {
         pid.update(present_length, now - pre);
         fp->set_duty(-pid.get_output());
         pre = now;
+        printf("exp:");
+        printf("%1d ", !lim->read());
+        printf("% 6ld ", fp->get_enc() - origin);
+        printf("% 6f ", present_length);
+        printf("% 6f ", pid.get_target());
+        printf("% 6d ", fp->get_raw_duty());
       }
     }
     void set_target(int16_t height) {
@@ -123,6 +130,7 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target_angle)) {
         // キャリブレーション
+        printf("ang:calibrate ");
         c620->set_raw_tgt_current(1500);
       } else if(state == Running) {
         auto now = HighResClock::now();
@@ -139,6 +147,13 @@ struct Mechanism {
         float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         pre = now;
+        printf("ang:");
+        printf("%1d ", !lim->read());
+        printf("%6ld ", fp->get_enc() - origin);
+        printf("% f ", present_rad);
+        printf("% f ", target_angle);
+        printf("% f ", new_tag_angle);
+        printf("%6d ", c620->get_raw_tgt_current());
       }
     }
     void set_target(int16_t angle) {
@@ -168,6 +183,7 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(pid.get_target())) {
         // キャリブレーション
+        printf("len:calibrate");
         fp->set_raw_duty(-3000);
       } else if(state == Running) {
         auto now = HighResClock::now();
@@ -175,6 +191,11 @@ struct Mechanism {
         pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
+        printf("len:");
+        printf("%1d ", !lim->read());
+        printf("%4ld ", fp->get_enc() - origin);
+        printf("%4d ", (int)((fp->get_enc() - origin) * enc_to_m * 1e3));
+        printf("%6d\t", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {

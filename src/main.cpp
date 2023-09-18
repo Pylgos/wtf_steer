@@ -255,10 +255,9 @@ int main() {
     }
     controller.update(timer.elapsed_time());
 
-    // for (size_t i = 0; i < 4; i++) {
-    //   printf(" %f", steer_encoders[i]->get_angle().deg());
-    // }
-    // printf("\n");
+    for(size_t i = 0; i < 4; i++) {
+      printf("% 3.3f ", steer_encoders[i]->get_angle().deg());
+    }
 
     switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
@@ -292,6 +291,7 @@ int main() {
 
     mech.task();
     write_can();
+    printf("\n");
 
     do {
       read_can();
