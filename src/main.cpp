@@ -47,10 +47,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-0.18)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(-19.42)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-65.39)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-47.86)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(7.25)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(53.75)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-67.9349)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-42.23)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -158,7 +158,7 @@ int update_steer_encoders() {
 
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
-    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9]},
+    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .lim_top = &limit_sw[5]},
     .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
     .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
@@ -255,10 +255,9 @@ int main() {
     }
     controller.update(timer.elapsed_time());
 
-    // for (size_t i = 0; i < 4; i++) {
-    //   printf(" %f", steer_encoders[i]->get_angle().deg());
-    // }
-    // printf("\n");
+    for(size_t i = 0; i < 4; i++) {
+      printf("% 3.3f ", steer_encoders[i]->get_angle().deg());
+    }
 
     switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
@@ -292,6 +291,7 @@ int main() {
 
     mech.task();
     write_can();
+    printf("\n");
 
     do {
       read_can();

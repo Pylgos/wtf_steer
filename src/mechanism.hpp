@@ -39,36 +39,52 @@ struct Mechanism {
   };
   struct Expander {
     static constexpr int enc_interval = -1474;
-    static constexpr float normalization = 1.0f / enc_interval;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
         origin = fp->get_enc();
         state = Running;
         pre = HighResClock::now();
-      } else if(state == Waiting && !std::isnan(pid.get_target())) {
-        fp->set_duty(-3000);
-      } else if(state == Running) {
+      } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
+        printf("exp:calibrate ");
+        fp->set_raw_duty(3000);
+      } else if(state == Running) {
         if(!lim->read()) origin = fp->get_enc();
+        if(!lim_top->read()) normalization = 1.0f / (fp->get_enc() - origin);
         auto now = HighResClock::now();
-        pid.update((fp->get_enc() - origin) * normalization, now - pre);
+        float present_length = (fp->get_enc() - origin) * normalization;
+        // ローパスフィルタ
+        float previous_tgt = pid.get_target();
+        if(std::isnan(previous_tgt)) previous_tgt = present_length;
+        previous_tgt += (target - previous_tgt) / 2;
+        pid.set_target(previous_tgt);
+        pid.update(present_length, now - pre);
         fp->set_duty(-pid.get_output());
         pre = now;
+        printf("exp:");
+        printf("%1d ", !lim->read());
+        printf("% 6ld ", fp->get_enc() - origin);
+        printf("% 6f ", present_length);
+        printf("% 6f ", pid.get_target());
+        printf("% 6d ", fp->get_raw_duty());
       }
     }
     void set_target(int16_t height) {
-      pid.set_target(height / 900.0f);
+      target = height / 900.0f;
     }
     FirstPenguin* fp;
     DigitalIn* lim;
+    DigitalIn* lim_top;
     enum {
       Waiting,
       Running,
     } state = Waiting;
+    float target = NAN;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = HighResClock::now();
+    decltype(HighResClock::now()) pre = {};
     int32_t origin = 0;
+    float normalization = 1.0f / enc_interval;
   };
   struct Collector {
     void task() {
@@ -114,28 +130,34 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target_angle)) {
         // キャリブレーション
+        printf("ang:calibrate ");
         c620->set_raw_tgt_current(1500);
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
-        chrono::duration<float> dt = now - set_time;
-        dt /= 1.3;
-        float t = std::clamp(dt.count(), 0.0f, 1.0f);
-        if(std::isnan(pre_tgt_angle)) pre_tgt_angle = 0;
-        float new_tag_angle = std::lerp(pre_tgt_angle, target_angle, t);
-        pid.set_target(new_tag_angle);
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
+        constexpr float max_omega = 1.5f;  // [rad/sec]
+        auto max = max_omega * chrono::duration<float>{now - pre}.count();
+        float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
+        float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
+        constexpr float max_distance = M_PI / 4;
+        new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
+        pid.set_target(new_tag_angle);
         pid.update(present_rad, now - pre);
-        float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
+        float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         pre = now;
+        printf("ang:");
+        printf("%1d ", !lim->read());
+        printf("%6ld ", fp->get_enc() - origin);
+        printf("% f ", present_rad);
+        printf("% f ", target_angle);
+        printf("% f ", new_tag_angle);
+        printf("%6d ", c620->get_raw_tgt_current());
       }
     }
     void set_target(int16_t angle) {
-      if(target_angle == angle) return;
-      pre_tgt_angle = target_angle;
       target_angle = angle * 1e-3;
-      set_time = HighResClock::now();
     }
     C620* c620;
     FirstPenguin* fp;
@@ -143,11 +165,9 @@ struct Mechanism {
     enum {
       Waiting,
       Running,
-    } state;
+    } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
-    decltype(HighResClock::now()) set_time = {};
-    float pre_tgt_angle = NAN;
     float target_angle = NAN;
     int32_t origin = 0;
   };
@@ -163,12 +183,19 @@ struct Mechanism {
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(pid.get_target())) {
         // キャリブレーション
-        fp->set_duty(-3000);
+        printf("len:calibrate");
+        fp->set_raw_duty(-3000);
       } else if(state == Running) {
         auto now = HighResClock::now();
+        if(!lim->read()) origin = fp->get_enc();
         pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
+        printf("len:");
+        printf("%1d ", !lim->read());
+        printf("%4ld ", fp->get_enc() - origin);
+        printf("%4d ", (int)((fp->get_enc() - origin) * enc_to_m * 1e3));
+        printf("%6d\t", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {
