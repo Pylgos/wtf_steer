@@ -39,7 +39,6 @@ struct Mechanism {
   };
   struct Expander {
     static constexpr int enc_interval = -1474;
-    static constexpr float normalization = 1.0f / enc_interval;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
@@ -51,6 +50,7 @@ struct Mechanism {
       } else if(state == Running) {
         // キャリブレーション
         if(!lim->read()) origin = fp->get_enc();
+        if(!lim_top->read()) normalization = 1.0f / (fp->get_enc() - origin);
         auto now = HighResClock::now();
         pid.update((fp->get_enc() - origin) * normalization, now - pre);
         fp->set_duty(-pid.get_output());
@@ -62,6 +62,7 @@ struct Mechanism {
     }
     FirstPenguin* fp;
     DigitalIn* lim;
+    DigitalIn* lim_top;
     enum {
       Waiting,
       Running,
@@ -69,6 +70,7 @@ struct Mechanism {
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     int32_t origin = 0;
+    float normalization = 1.0f / enc_interval;
   };
   struct Collector {
     void task() {
