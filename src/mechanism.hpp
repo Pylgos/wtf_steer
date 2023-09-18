@@ -45,20 +45,26 @@ struct Mechanism {
         origin = fp->get_enc();
         state = Running;
         pre = HighResClock::now();
-      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+      } else if(state == Waiting && !std::isnan(target)) {
+        // キャリブレーション
         fp->set_raw_duty(3000);
       } else if(state == Running) {
-        // キャリブレーション
         if(!lim->read()) origin = fp->get_enc();
         if(!lim_top->read()) normalization = 1.0f / (fp->get_enc() - origin);
         auto now = HighResClock::now();
-        pid.update((fp->get_enc() - origin) * normalization, now - pre);
+        float present_length = (fp->get_enc() - origin) * normalization;
+        // ローパスフィルタ
+        float previous_tgt = pid.get_target();
+        if(std::isnan(previous_tgt)) previous_tgt = present_length;
+        previous_tgt += (target - previous_tgt) / 2;
+        pid.set_target(previous_tgt);
+        pid.update(present_length, now - pre);
         fp->set_duty(-pid.get_output());
         pre = now;
       }
     }
     void set_target(int16_t height) {
-      pid.set_target(height / 900.0f);
+      target = height / 900.0f;
     }
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -67,6 +73,7 @@ struct Mechanism {
       Waiting,
       Running,
     } state = Waiting;
+    float target = NAN;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     int32_t origin = 0;
