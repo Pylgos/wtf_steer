@@ -47,7 +47,7 @@ struct Mechanism {
         state = Running;
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(pid.get_target())) {
-        fp->set_duty(-3000);
+        fp->set_duty(3000);
       } else if(state == Running) {
         // キャリブレーション
         if(!lim->read()) origin = fp->get_enc();
