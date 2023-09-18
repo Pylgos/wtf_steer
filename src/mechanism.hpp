@@ -121,13 +121,15 @@ struct Mechanism {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
-        constexpr float max_omega = M_PI / 4;
+        constexpr float max_omega = 1.5f;  // [rad/sec]
         auto max = max_omega * chrono::duration<float>{now - pre}.count();
         float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
         float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
+        constexpr float max_distance = M_PI / 4;
+        new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
         pid.set_target(new_tag_angle);
         pid.update(present_rad, now - pre);
-        float anti_gravity = 3000 * std::cos(M_PI / 6 + present_rad);
+        float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         pre = now;
       }
