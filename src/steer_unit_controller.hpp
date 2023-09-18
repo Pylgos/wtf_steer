@@ -37,7 +37,14 @@ class SteerUnitController {
     Direction tgt_backward_dir = tgt_dir + Angle::half_turn();
     Angle tgt_angle = present_steer_angle.closest_angle_of(tgt_dir);
     Angle tgt_backward_angle = present_steer_angle.closest_angle_of(tgt_backward_dir);
-    if((tgt_angle - present_steer_angle).abs() < (tgt_backward_angle - present_steer_angle).abs()) {
+
+    Angle velocity_cost = Angle::from_rad(std::min((float)M_PI / 4, odom_vel_.length() * 1.0f));
+    Angle forward_cost =
+        (tgt_angle - present_steer_angle).abs() + (present_drive_ang_vel < 0 ? velocity_cost : Angle::zero());
+    Angle backward_cost =
+        (tgt_backward_angle - present_steer_angle).abs() + (present_drive_ang_vel > 0 ? velocity_cost : Angle::zero());
+
+    if(forward_cost < backward_cost) {
       steer_controller_.set_tgt_direction(tgt_dir);
       drive_controller_.set_target(tgt_vel_.length() / wheel_radius_);
       last_tgt_dir_ = tgt_dir;
