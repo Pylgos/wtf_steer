@@ -229,7 +229,7 @@ int main() {
   controller.publish_steer_state([](int idx) {
     Feedback::SteerUnitState steer_state;
     steer_state.index = idx;
-    steer_state.velocity = drive_motors[idx]->get_ang_vel() * 1e3;
+    steer_state.velocity = drive_motors[idx]->get_ang_vel() * 1e2;
     steer_state.current = drive_motors[idx]->get_actual_current() * 1e3;
     steer_state.angle = steer_encoders[idx]->get_angle().direction().rad() * 1e3;
     return steer_state;
