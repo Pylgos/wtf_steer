@@ -46,6 +46,9 @@ class C620 {
   float get_ang_vel() {
     return ang_vel_;
   }
+  float get_actual_current() const {
+    return actual_current_;
+  }
 
   void parse_packet(const uint8_t data[8]) {
     direction_ = Direction::from_rad((data[0] << 8 | data[1]) * (float)(2 * anglelib::PI / 8191.0));
