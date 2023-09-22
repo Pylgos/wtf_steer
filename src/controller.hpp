@@ -208,6 +208,7 @@ class Controller {
 
     if(now - last_state_publish_ > 100ms) {
       publish_state();
+      publish_steer_state();
       last_state_publish_ = now;
     }
 
@@ -274,6 +275,9 @@ class Controller {
   }
   void on_large_wheel(std::function<void(int16_t)> f) {
     on_large_wheel_ = f;
+  }
+  void publish_steer_state(std::function<Feedback::SteerUnitState(int)> f) {
+    publish_steer_state_ = f;
   }
 
   bool is_timeout(std::chrono::microseconds now) {
@@ -347,6 +351,16 @@ class Controller {
     can_write_impl_(msg);
   }
 
+  void publish_steer_state() {
+    if(!publish_steer_state_) return;
+    Feedback fb = {.tag = Feedback::Tag::STEER_UNIT_STATE};
+    for(int i = 0; i < 4; ++i) {
+      fb.steer_unit_state = publish_steer_state_(i);
+      CANMessage msg = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
+      can_write_impl_(msg);
+    }
+  }
+
   void publish_odom() {
     CANMessage msg;
     msg.id = Feedback::ID;
@@ -373,6 +387,7 @@ class Controller {
   std::function<void(int16_t)> on_arm_angle_ = nullptr;
   std::function<void(int16_t)> on_arm_length_ = nullptr;
   std::function<void(int16_t)> on_large_wheel_ = nullptr;
+  std::function<Feedback::SteerUnitState(int)> publish_steer_state_ = nullptr;
 };
 
 #endif
