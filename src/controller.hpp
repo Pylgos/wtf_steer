@@ -231,10 +231,10 @@ class Controller {
     }
   }
 
-  Vec2 get_tgt_linear_vel() {
+  Vec2 get_tgt_linear_vel() const {
     return tgt_linear_vel_;
   }
-  float get_tgt_ang_vel() {
+  float get_tgt_ang_vel() const {
     return tgt_ang_vel_;
   }
 
@@ -337,20 +337,13 @@ class Controller {
   }
 
   template<class Func, class... Args>
-  void call(Func f, Args... args) {
+  static void call(Func f, Args... args) {
     if(f != nullptr) f(std::forward<Args>(args)...);
   }
 
   void publish_state() {
-    CANMessage msg;
-    msg.id = Feedback::ID;
-    msg.len = 8;
-    msg.format = CANStandard;
-    msg.type = CANData;
-    Feedback fb;
-    fb.tag = Feedback::Tag::CURRENT_STATE;
-    fb.current_state.state = get_state();
-    memcpy(msg.data, &fb, sizeof(fb));
+    Feedback fb = {.tag = Feedback::Tag::CURRENT_STATE, .current_state = {.state = get_state()}};
+    CANMessage msg = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), 8};
     can_write_impl_(msg);
   }
 

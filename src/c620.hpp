@@ -15,7 +15,7 @@ class C620 {
   void set_gear_ratio(float gear_ratio) {
     gear_ratio_ = gear_ratio;
   }
-  float get_gear_ratio() {
+  float get_gear_ratio() const {
     return gear_ratio_;
   }
 
@@ -36,14 +36,14 @@ class C620 {
   void set_tgt_torque(const float tgt_torque) {
     set_tgt_current(tgt_torque * (8.0f / 3.0f) * gear_ratio_);
   }
-  float get_tgt_torque() {
+  float get_tgt_torque() const {
     return get_tgt_current() * (3.0f / 8.0f) / gear_ratio_;
   }
 
-  Direction get_direction() {
+  Direction get_direction() const {
     return direction_;
   }
-  float get_ang_vel() {
+  float get_ang_vel() const {
     return ang_vel_;
   }
   float get_actual_current() const {
