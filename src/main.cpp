@@ -226,6 +226,14 @@ int main() {
     printf("large_wheel %d\n", duty);
     mech.large_wheel.tag_duty = duty;
   });
+  controller.publish_steer_state([](int idx) {
+    Feedback::SteerUnitState steer_state;
+    steer_state.index = idx;
+    steer_state.velocity = drive_motors[idx]->get_ang_vel() * 1e3;
+    steer_state.current = drive_motors[idx]->get_actual_current() * 1e3;
+    steer_state.angle = drive_motors[idx]->get_direction().rad() * 1e3;
+    return steer_state;
+  });
 
   front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
   rear_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);
