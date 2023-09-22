@@ -47,10 +47,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(7.25)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(53.75)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-67.9349)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-42.23)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-18.501)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(13.140)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-61.084)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(29.795)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -225,6 +225,14 @@ int main() {
   controller.on_large_wheel([](int16_t duty) {
     printf("large_wheel %d\n", duty);
     mech.large_wheel.tag_duty = duty;
+  });
+  controller.publish_steer_state([](int idx) {
+    Feedback::SteerUnitState steer_state;
+    steer_state.index = idx;
+    steer_state.velocity = drive_motors[idx]->get_ang_vel() * 1e2;
+    steer_state.current = drive_motors[idx]->get_actual_current() * 1e3;
+    steer_state.angle = steer_encoders[idx]->get_angle().direction().rad() * 1e3;
+    return steer_state;
   });
 
   front_left_drive_motor->set_gear_ratio(-drive_motor_gear_ratio);

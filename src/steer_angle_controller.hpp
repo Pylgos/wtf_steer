@@ -23,7 +23,7 @@ class SteerAngleController {
     } else {
       target_angle = present.closest_angle_of(target_dir_);
     }
-    constexpr float max_omega = 4.5f;  // [rad/sec]
+    constexpr float max_omega = 7.5f;  // [rad/sec]
     auto max = Angle{max_omega * std::chrono::duration<float>(dt).count()};
     float now_tgt = pid_.get_target();
     if(std::isnan(now_tgt)) now_tgt = 0;

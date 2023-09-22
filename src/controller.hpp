@@ -208,6 +208,7 @@ class Controller {
 
     if(now - last_state_publish_ > 100ms) {
       publish_state();
+      publish_steer_state();
       last_state_publish_ = now;
     }
 
@@ -231,10 +232,10 @@ class Controller {
     }
   }
 
-  Vec2 get_tgt_linear_vel() {
+  Vec2 get_tgt_linear_vel() const {
     return tgt_linear_vel_;
   }
-  float get_tgt_ang_vel() {
+  float get_tgt_ang_vel() const {
     return tgt_ang_vel_;
   }
 
@@ -274,6 +275,9 @@ class Controller {
   }
   void on_large_wheel(std::function<void(int16_t)> f) {
     on_large_wheel_ = f;
+  }
+  void publish_steer_state(std::function<Feedback::SteerUnitState(int)> f) {
+    publish_steer_state_ = f;
   }
 
   bool is_timeout(std::chrono::microseconds now) {
@@ -337,21 +341,24 @@ class Controller {
   }
 
   template<class Func, class... Args>
-  void call(Func f, Args... args) {
+  static void call(Func f, Args... args) {
     if(f != nullptr) f(std::forward<Args>(args)...);
   }
 
   void publish_state() {
-    CANMessage msg;
-    msg.id = Feedback::ID;
-    msg.len = 8;
-    msg.format = CANStandard;
-    msg.type = CANData;
-    Feedback fb;
-    fb.tag = Feedback::Tag::CURRENT_STATE;
-    fb.current_state.state = get_state();
-    memcpy(msg.data, &fb, sizeof(fb));
+    Feedback fb = {.tag = Feedback::Tag::CURRENT_STATE, .current_state = {.state = get_state()}};
+    CANMessage msg = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), 8};
     can_write_impl_(msg);
+  }
+
+  void publish_steer_state() {
+    if(!publish_steer_state_) return;
+    Feedback fb = {.tag = Feedback::Tag::STEER_UNIT_STATE};
+    for(int i = 0; i < 4; ++i) {
+      fb.steer_unit_state = publish_steer_state_(i);
+      CANMessage msg = {Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
+      can_write_impl_(msg);
+    }
   }
 
   void publish_odom() {
@@ -380,6 +387,7 @@ class Controller {
   std::function<void(int16_t)> on_arm_angle_ = nullptr;
   std::function<void(int16_t)> on_arm_length_ = nullptr;
   std::function<void(int16_t)> on_large_wheel_ = nullptr;
+  std::function<Feedback::SteerUnitState(int)> publish_steer_state_ = nullptr;
 };
 
 #endif

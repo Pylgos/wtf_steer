@@ -159,6 +159,9 @@ struct Mechanism {
     void set_target(int16_t angle) {
       target_angle = angle * 1e-3;
     }
+    bool is_up() const {
+      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 3;
+    }
     C620* c620;
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -175,13 +178,16 @@ struct Mechanism {
     static constexpr int enc_interval = 23000;
     static constexpr int max_length = 900;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
-    void task() {
+    void task(Mechanism* mech) {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
-        origin = fp->get_enc();
-        state = Running;
-        pre = HighResClock::now();
-      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+        fp->set_raw_duty(0);
+        if(mech->arm_angle.is_up()) {
+          origin = fp->get_enc();
+          state = Running;
+          pre = HighResClock::now();
+        }
+      } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_up())) {
         // キャリブレーション
         printf("len:calibrate");
         fp->set_raw_duty(-3000);
@@ -230,7 +236,7 @@ struct Mechanism {
     expander.task();
     collector.task();
     arm_angle.task();
-    arm_length.task();
+    arm_length.task(this);
     large_wheel.task();
   }
 
