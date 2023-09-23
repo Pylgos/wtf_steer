@@ -29,18 +29,20 @@ class Amt21 {
   }
 
   bool update_pos() {
+    Angle closest{1e9};
     for (size_t i = 0; i < 3; ++i) {
-      rs485_->flush_read_buffer();
-      rs485_->send(&address_, 1);
-      if(uint16_t resp; rs485_->recv(&resp, sizeof(resp), 20us) && (is_valid(resp))) {
-        uint16_t ticks = (resp & 0b0011'1111'1111'1111) >> 2;
-        auto dir = Direction::from_rad(ticks * ticks_to_rads);
-        raw_angle_ = raw_angle_.closest_angle_of(dir);
-        angle_ = raw_angle_ * scale_ + offset_;
-        return true;
+      Angle ang;
+      if (!read_raw_angle(ang)) {
+        return false;
+      }
+      if (ang < closest) {
+        closest = ang;
       }
     }
-    return false;
+
+    raw_angle_ = closest;
+    angle_ = raw_angle_ * scale_ + offset_;
+    return true;
   }
 
   void reset() {
@@ -55,6 +57,20 @@ class Amt21 {
   Angle offset_;
   Angle angle_ = {};
   Angle raw_angle_ = {};
+
+  bool read_raw_angle(Angle& result) {
+    for (size_t i = 0; i < 3; ++i) {
+      rs485_->flush_read_buffer();
+      rs485_->send(&address_, 1);
+      if(uint16_t resp; rs485_->recv(&resp, sizeof(resp), 20us) && (is_valid(resp))) {
+        uint16_t ticks = (resp & 0b0011'1111'1111'1111) >> 2;
+        auto dir = Direction::from_rad(ticks * ticks_to_rads);
+        result = raw_angle_.closest_angle_of(dir);
+        return true;
+      }
+    }
+    return false;
+  }
 
   static bool is_valid(uint16_t raw_data) {
     auto b = [raw_data](int pos) {
