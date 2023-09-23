@@ -35,7 +35,8 @@ class Amt21 {
       if (!read_raw_angle(ang)) {
         return false;
       }
-      if (ang < closest) {
+      
+      if ((raw_angle_ - ang).abs() < (raw_angle_ - closest).abs()) {
         closest = ang;
       }
     }
