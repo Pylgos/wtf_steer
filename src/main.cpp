@@ -47,10 +47,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-18.501)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(13.140)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-61.084)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(29.795)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(18.2)};
+Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(-11.1)};
+Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-17.9)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-31.4)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
