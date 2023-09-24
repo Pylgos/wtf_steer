@@ -21,12 +21,9 @@ struct Mechanism {
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
-      if(lim[0] && dir == 1) dir = 0;
-      if(lim[1] && dir == -1) dir = 0;
-
-      if(dir == 1) {
+      if(dir == 1 && !lim[0]) {
         fp->set_raw_duty(8000);
-      } else if(dir == -1) {
+      } else if(dir == -1 && !lim[1]) {
         fp->set_raw_duty(-8000);
       } else {
         fp->set_raw_duty(0);
