@@ -103,10 +103,12 @@ struct C620Array {
     return result;
   }
 
-  void parse_packet(const CANMessage& msg) {
+  bool parse_packet(const CANMessage& msg) {
     if(msg.format == CANStandard && msg.type == CANData && msg.len == 8 && 0x201 <= msg.id && msg.id <= 0x208) {
       ary_[msg.id - 0x201u].parse_packet(msg.data);
+      return true;
     }
+    return false;
   }
 
  private:

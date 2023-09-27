@@ -127,6 +127,7 @@ void write_can() {
   }
 }
 
+static HighResClock::time_point last_c620 = {};
 void read_can() {
   try_init_can();
   CANMessage msg;
@@ -138,8 +139,8 @@ void read_can() {
   }
 
   if(can2.isOpened()) {
-    if(can2.read(msg)) {
-      c620_array.parse_packet(msg);
+    if(can2.read(msg) && c620_array.parse_packet(msg)) {
+      last_c620 = HighResClock::now();
     }
   }
 }
@@ -284,6 +285,9 @@ int main() {
                                 {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
                                  steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
                                 dt);
+
+        auto now = HighResClock::now();
+        if(now - last_c620 > 100ms) steer_controller.reset();
 
         auto drive_cmd = steer_controller.get_drive_outputs();
         auto steer_cmd = steer_controller.get_steer_outputs();
