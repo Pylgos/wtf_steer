@@ -280,14 +280,17 @@ int main() {
       case Feedback::CurrentState::RUNNING: {
         steer_controller.set_tgt_vel(controller.get_tgt_linear_vel(), controller.get_tgt_ang_vel());
 
-        steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
-                                 drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
-                                {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
-                                 steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
-                                dt);
-
         auto now = HighResClock::now();
-        if(now - last_c620 > 100ms) steer_controller.reset();
+        if(now - last_c620 > 100ms) {
+          printf("detect emergency.");
+          steer_controller.reset();
+        } else {
+          steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
+                                   drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
+                                  {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
+                                   steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
+                                  dt);
+        }
 
         auto drive_cmd = steer_controller.get_drive_outputs();
         auto steer_cmd = steer_controller.get_steer_outputs();
