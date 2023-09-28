@@ -167,6 +167,11 @@ struct Mechanism {
         state = Waiting;
       }
     }
+    bool is_top() const {
+      auto present = (fp->get_enc() - origin);
+      bool top = 80 * deg2enc < present && present < 100 * deg2enc;
+      return state == Running && top;
+    }
     bool is_up() const {
       return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 3;
     }
@@ -190,15 +195,19 @@ struct Mechanism {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
         fp->set_raw_duty(0);
-        if(mech->arm_angle.is_up()) {
+        if(mech->arm_angle.is_top()) {
           origin = fp->get_enc();
           state = Running;
           pre = HighResClock::now();
         }
-      } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_up())) {
+      } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_top())) {
         // キャリブレーション
         printf("len:calibrate");
         fp->set_raw_duty(-3000);
+      } else if(state == Running && !mech->arm_angle.is_up()) {
+        // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
+        origin = NAN;
+        state = Waiting;
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc();
