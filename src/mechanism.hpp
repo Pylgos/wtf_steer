@@ -68,7 +68,13 @@ struct Mechanism {
       }
     }
     void set_target(int16_t height) {
-      target = height / 900.0f;
+      if(height >= 0) {
+        target = height / 900.0f;
+      } else {
+        // キャリブレーション
+        target = 0;
+        state = Waiting;
+      }
     }
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -154,7 +160,12 @@ struct Mechanism {
       }
     }
     void set_target(int16_t angle) {
-      target_angle = angle * 1e-3;
+      if(angle >= -60) {
+        target_angle = angle * 1e-3;
+      } else {
+        target_angle = -60 * deg2enc;
+        state = Waiting;
+      }
     }
     bool is_up() const {
       return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 3;
@@ -202,7 +213,12 @@ struct Mechanism {
       }
     }
     void set_target(int16_t length) {
-      pid.set_target(length * 1e-3);
+      if(length >= 0) {
+        pid.set_target(length * 1e-3);
+      } else {
+        pid.set_target(0);
+        state = Waiting;
+      }
     }
     FirstPenguin* fp;
     DigitalIn* lim;
