@@ -265,7 +265,7 @@ int main() {
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
-      printf("% 3.3f ", steer_encoders[i]->get_angle().deg());
+      printf("% 4.1f ", steer_encoders[i]->get_angle().deg());
     }
 
     switch(controller.get_state()) {
