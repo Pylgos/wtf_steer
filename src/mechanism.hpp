@@ -134,7 +134,7 @@ struct Mechanism {
       } else if(state == Waiting && !std::isnan(target_angle)) {
         // キャリブレーション
         printf("ang:calibrate ");
-        c620->set_raw_tgt_current(2300);
+        c620->set_raw_tgt_current(1500);
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
