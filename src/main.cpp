@@ -112,11 +112,9 @@ void write_can() {
 
   if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
-    if(!can1.write(fp_msg)) {
+    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg()) || !can1.write(fp_mech[1].to_msg())) {
       printf("failed to write first penguin msg\n");
     }
-    can1.write(fp_mech[0].to_msg());
-    can1.write(fp_mech[1].to_msg());
   }
 
   if(can2.isOpened()) {
