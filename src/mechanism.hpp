@@ -188,12 +188,13 @@ struct Mechanism {
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 23000;
+    static constexpr int enc_interval = 2680;
     static constexpr int max_length = 900;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task(Mechanism* mech) {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
+        printf("len:stop ");
         fp->set_raw_duty(0);
         if(mech->arm_angle.is_top()) {
           origin = fp->get_enc();
@@ -202,8 +203,8 @@ struct Mechanism {
         }
       } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_top())) {
         // キャリブレーション
-        printf("len:calibrate");
-        fp->set_raw_duty(-3000);
+        printf("len:calibrate ");
+        fp->set_raw_duty(-15000);
       } else if(state == Running && !mech->arm_angle.is_up()) {
         // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
         origin = NAN;
