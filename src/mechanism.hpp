@@ -160,7 +160,7 @@ struct Mechanism {
       }
     }
     void set_target(int16_t angle) {
-      if(angle >= -60) {
+      if(angle >= -M_PI / 3 * 1e3) {
         target_angle = angle * 1e-3;
       } else {
         target_angle = -60 * deg2enc;
