@@ -207,26 +207,34 @@ struct Mechanism {
         fp->set_raw_duty(-15000);
       } else if(state == Running && !mech->arm_angle.is_up()) {
         // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
-        origin = NAN;
+        pid.set_target(0);
         state = Waiting;
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc();
-        pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
+        const float present_length = (fp->get_enc() - origin) * enc_to_m;
+        constexpr float max_vel = 1200 * 1e-3;  // [m/s]
+        std::chrono::duration<float> dt = now - pre;
+        const float max = max_vel * dt.count();
+        const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+        float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
+        pid.set_target(new_tag_length);
+        pid.update(present_length, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
         printf("len:");
         printf("%1d ", !lim->read());
         printf("%4ld ", fp->get_enc() - origin);
-        printf("%4d ", (int)((fp->get_enc() - origin) * enc_to_m * 1e3));
+        printf("%4d ", (int)(present_length * 1e3));
+        printf("%4d ", (int)(new_tag_length * 1e3));
         printf("%6d\t", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {
       if(length >= 0) {
-        pid.set_target(length * 1e-3);
+        target_length = length * 1e-3;
       } else {
-        pid.set_target(0);
+        target_length = NAN;
         state = Waiting;
       }
     }
@@ -238,6 +246,7 @@ struct Mechanism {
     } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    float target_length = NAN;
     int32_t origin = 0;
   };
   struct LargeWheel {
