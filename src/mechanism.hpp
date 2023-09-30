@@ -169,7 +169,7 @@ struct Mechanism {
     }
     bool is_top() const {
       auto present = (fp->get_enc() - origin);
-      bool top = 80 * deg2enc < present && present < 100 * deg2enc;
+      bool top = 75 * deg2enc < present && present < 105 * deg2enc;
       return state == Running && top;
     }
     bool is_up() const {
