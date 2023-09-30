@@ -47,10 +47,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(18.2)};
-Amt21 rear_left_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(-11.1)};
-Amt21 rear_right_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(-17.9)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(-31.4)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-49.9)};
+Amt21 rear_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(85.7)};
+Amt21 rear_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(6.8)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(71.6)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -127,6 +127,7 @@ void write_can() {
   }
 }
 
+static HighResClock::time_point last_c620 = {};
 void read_can() {
   try_init_can();
   CANMessage msg;
@@ -138,8 +139,8 @@ void read_can() {
   }
 
   if(can2.isOpened()) {
-    if(can2.read(msg)) {
-      c620_array.parse_packet(msg);
+    if(can2.read(msg) && c620_array.parse_packet(msg)) {
+      last_c620 = HighResClock::now();
     }
   }
 }
@@ -264,7 +265,7 @@ int main() {
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
-      printf("% 3.3f ", steer_encoders[i]->get_angle().deg());
+      printf("% 4.1f ", steer_encoders[i]->get_angle().deg());
     }
 
     switch(controller.get_state()) {
@@ -279,11 +280,17 @@ int main() {
       case Feedback::CurrentState::RUNNING: {
         steer_controller.set_tgt_vel(controller.get_tgt_linear_vel(), controller.get_tgt_ang_vel());
 
-        steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
-                                 drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
-                                {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
-                                 steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
-                                dt);
+        auto now = HighResClock::now();
+        if(now - last_c620 > 100ms) {
+          printf("detect emergency.");
+          steer_controller.reset();
+        } else {
+          steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
+                                   drive_motors[2]->get_ang_vel(), drive_motors[3]->get_ang_vel()},
+                                  {steer_encoders[0]->get_angle(), steer_encoders[1]->get_angle(),
+                                   steer_encoders[2]->get_angle(), steer_encoders[3]->get_angle()},
+                                  dt);
+        }
 
         auto drive_cmd = steer_controller.get_drive_outputs();
         auto steer_cmd = steer_controller.get_steer_outputs();
