@@ -134,7 +134,7 @@ struct Mechanism {
       } else if(state == Waiting && !std::isnan(target_angle)) {
         // キャリブレーション
         printf("ang:calibrate ");
-        c620->set_raw_tgt_current(1500);
+        c620->set_raw_tgt_current(2000);
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
@@ -173,7 +173,7 @@ struct Mechanism {
       return state == Running && top;
     }
     bool is_up() const {
-      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 3;
+      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 6;
     }
     C620* c620;
     FirstPenguin* fp;
@@ -207,7 +207,7 @@ struct Mechanism {
         fp->set_raw_duty(-15000);
       } else if(state == Running && !mech->arm_angle.is_up()) {
         // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
-        pid.set_target(0);
+        pid.set_target(NAN);
         state = Waiting;
       } else if(state == Running) {
         auto now = HighResClock::now();
