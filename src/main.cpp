@@ -263,7 +263,7 @@ int main() {
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
-      printf("% 4.1f ", steer_encoders[i]->get_angle().deg());
+      printf("% 6.1f ", steer_encoders[i]->get_angle().deg());
     }
 
     switch(controller.get_state()) {
@@ -297,6 +297,7 @@ int main() {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
+        for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
 
         controller.set_odom(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
       } break;

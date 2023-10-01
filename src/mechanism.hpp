@@ -41,6 +41,7 @@ struct Mechanism {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
         origin = fp->get_enc();
+        fp->set_raw_duty(0);
         state = Running;
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target)) {
@@ -63,8 +64,8 @@ struct Mechanism {
         printf("exp:");
         printf("%1d ", !lim_top->read() << 1 | !lim->read());
         printf("% 6ld ", fp->get_enc() - origin);
-        printf("% 6f ", present_length);
-        printf("% 6f ", pid.get_target());
+        printf("% 5.2f ", present_length);
+        printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
       }
     }
@@ -129,6 +130,7 @@ struct Mechanism {
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点セット
+        c620->set_raw_tgt_current(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target_angle)) {
         const auto now = HighResClock::now();
@@ -160,9 +162,9 @@ struct Mechanism {
         printf("ang:");
         printf("%1d ", !lim->read());
         printf("%6ld ", fp->get_enc() - origin);
-        printf("% f ", present_rad);
-        printf("% f ", target_angle);
-        printf("% f ", new_tag_angle);
+        printf("% 4.2f ", present_rad);
+        printf("% 4.2f ", target_angle);
+        printf("% 4.2f ", new_tag_angle);
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
