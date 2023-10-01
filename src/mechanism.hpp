@@ -129,13 +129,19 @@ struct Mechanism {
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点セット
-        origin = fp->get_enc() + 60 * deg2enc;
-        state = Running;
-        pre = HighResClock::now();
+        enter_running();
       } else if(state == Waiting && !std::isnan(target_angle)) {
-        // キャリブレーション
-        printf("ang:calibrate ");
-        c620->set_raw_tgt_current(2000);
+        const auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 3s) {
+          // キャリブレーション
+          printf("ang:calibrate ");
+          c620->set_raw_tgt_current(2000);
+        } else {
+          // 3s リミット踏めなかったらそこを原点にする
+          printf("len:stop calibrate ");
+          enter_running();
+        }
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
@@ -176,6 +182,13 @@ struct Mechanism {
     bool is_up() const {
       return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 6;
     }
+    void enter_running() {
+      origin = fp->get_enc() + 60 * deg2enc;
+      c620->set_raw_tgt_current(0);
+      state = Running;
+      pre = HighResClock::now();
+      calibrate_start = std::nullopt;
+    }
     C620* c620;
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -185,6 +198,7 @@ struct Mechanism {
     } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     float target_angle = NAN;
     int32_t origin = 0;
   };
