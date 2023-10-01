@@ -252,12 +252,9 @@ struct Mechanism {
   struct LargeWheel {
     void task() {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
-      fp_arr[0]->set_raw_duty(duty);
-      fp_arr[1]->set_raw_duty(-duty);
       c620_arr[0]->set_raw_tgt_current(duty);
       c620_arr[1]->set_raw_tgt_current(-duty);
     }
-    FirstPenguin* fp_arr[2];
     C620* c620_arr[2];
     int16_t tag_duty = 0;
     int16_t duty = 0;
