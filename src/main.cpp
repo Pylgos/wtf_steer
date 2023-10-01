@@ -159,7 +159,7 @@ Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
     .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .lim_top = &limit_sw[5]},
     .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
-    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]},
+    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
