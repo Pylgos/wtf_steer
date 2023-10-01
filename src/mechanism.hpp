@@ -5,6 +5,7 @@
 
 #include <c620.hpp>
 #include <first_penguin.hpp>
+#include <optional>
 #include <pid_controller.hpp>
 
 struct Mechanism {
@@ -196,15 +197,20 @@ struct Mechanism {
       if(state == Waiting && !lim->read()) {
         printf("len:stop ");
         fp->set_raw_duty(0);
-        if(mech->arm_angle.is_top()) {
-          origin = fp->get_enc();
-          state = Running;
-          pre = HighResClock::now();
-        }
+        if(mech->arm_angle.is_top()) enter_running();
       } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_top())) {
-        // キャリブレーション
-        printf("len:calibrate ");
-        fp->set_raw_duty(-15000);
+        auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 3s) {
+          // キャリブレーション
+          printf("len:calibrate ");
+          fp->set_raw_duty(-15000);
+        } else {
+          // 3s リミット踏めなかったらそこを原点にする
+          printf("len:stop calibrate ");
+          fp->set_raw_duty(0);
+          if(mech->arm_angle.is_top()) enter_running();
+        }
       } else if(state == Running && !mech->arm_angle.is_up()) {
         // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
         pid.set_target(NAN);
@@ -238,6 +244,12 @@ struct Mechanism {
         state = Waiting;
       }
     }
+    void enter_running() {
+      calibrate_start = std::nullopt;
+      origin = fp->get_enc();
+      state = Running;
+      pre = HighResClock::now();
+    }
     FirstPenguin* fp;
     DigitalIn* lim;
     enum {
@@ -246,6 +258,7 @@ struct Mechanism {
     } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     float target_length = NAN;
     int32_t origin = 0;
   };
