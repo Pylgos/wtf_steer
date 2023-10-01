@@ -206,13 +206,13 @@ struct Mechanism {
     static constexpr int enc_interval = 2680;
     static constexpr int max_length = 900;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
-    void task(Mechanism* mech) {
+    void task() {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
         printf("len:stop ");
         fp->set_raw_duty(0);
-        if(mech->arm_angle.is_top()) enter_running();
-      } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_top())) {
+        enter_running();
+      } else if(state == Waiting && !std::isnan(pid.get_target())) {
         auto now = HighResClock::now();
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 3s) {
@@ -223,12 +223,8 @@ struct Mechanism {
           // 3s リミット踏めなかったらそこを原点にする
           printf("len:stop calibrate ");
           fp->set_raw_duty(0);
-          if(mech->arm_angle.is_top()) enter_running();
+          enter_running();
         }
-      } else if(state == Running && !mech->arm_angle.is_up()) {
-        // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
-        pid.set_target(NAN);
-        state = Waiting;
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc();
@@ -292,7 +288,7 @@ struct Mechanism {
     expander.task();
     collector.task();
     arm_angle.task();
-    arm_length.task(this);
+    arm_length.task();
     large_wheel.task();
   }
 
