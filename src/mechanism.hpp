@@ -49,7 +49,7 @@ struct Mechanism {
         fp->set_raw_duty(3000);
       } else if(state == Running) {
         if(!lim->read()) origin = fp->get_enc();
-        if(!lim_top->read()) normalization = 1.0f / (fp->get_enc() - origin);
+        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) normalization = 1.0f / (fp->get_enc() - origin);
         auto now = HighResClock::now();
         float present_length = (fp->get_enc() - origin) * normalization;
         // ローパスフィルタ
