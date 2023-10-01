@@ -60,7 +60,7 @@ struct Mechanism {
         fp->set_duty(-pid.get_output());
         pre = now;
         printf("exp:");
-        printf("%1d ", !lim->read());
+        printf("%1d ", !lim_top->read() << 1 | !lim->read());
         printf("% 6ld ", fp->get_enc() - origin);
         printf("% 6f ", present_length);
         printf("% 6f ", pid.get_target());
