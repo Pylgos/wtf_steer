@@ -5,6 +5,7 @@
 
 #include <c620.hpp>
 #include <first_penguin.hpp>
+#include <optional>
 #include <pid_controller.hpp>
 
 struct Mechanism {
@@ -40,7 +41,9 @@ struct Mechanism {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
         origin = fp->get_enc();
+        fp->set_raw_duty(0);
         state = Running;
+        pid.reset();
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
@@ -48,7 +51,7 @@ struct Mechanism {
         fp->set_raw_duty(3000);
       } else if(state == Running) {
         if(!lim->read()) origin = fp->get_enc();
-        if(!lim_top->read()) normalization = 1.0f / (fp->get_enc() - origin);
+        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) normalization = 1.0f / (fp->get_enc() - origin);
         auto now = HighResClock::now();
         float present_length = (fp->get_enc() - origin) * normalization;
         // ローパスフィルタ
@@ -60,16 +63,16 @@ struct Mechanism {
         fp->set_duty(-pid.get_output());
         pre = now;
         printf("exp:");
-        printf("%1d ", !lim->read());
+        printf("%1d ", !lim_top->read() << 1 | !lim->read());
         printf("% 6ld ", fp->get_enc() - origin);
-        printf("% 6f ", present_length);
-        printf("% 6f ", pid.get_target());
+        printf("% 5.2f ", present_length);
+        printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
       }
     }
     void set_target(int16_t height) {
       if(height >= 0) {
-        target = height / 900.0f;
+        target = height / 1000.0f;
       } else {
         // キャリブレーション
         target = 0;
@@ -128,13 +131,20 @@ struct Mechanism {
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点セット
-        origin = fp->get_enc() + 60 * deg2enc;
-        state = Running;
-        pre = HighResClock::now();
+        c620->set_raw_tgt_current(0);
+        enter_running();
       } else if(state == Waiting && !std::isnan(target_angle)) {
-        // キャリブレーション
-        printf("ang:calibrate ");
-        c620->set_raw_tgt_current(2300);
+        const auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 3s) {
+          // キャリブレーション
+          printf("ang:calibrate ");
+          c620->set_raw_tgt_current(2000);
+        } else {
+          // 3s リミット踏めなかったらそこを原点にする
+          printf("len:stop calibrate ");
+          enter_running();
+        }
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
@@ -153,14 +163,14 @@ struct Mechanism {
         printf("ang:");
         printf("%1d ", !lim->read());
         printf("%6ld ", fp->get_enc() - origin);
-        printf("% f ", present_rad);
-        printf("% f ", target_angle);
-        printf("% f ", new_tag_angle);
+        printf("% 4.2f ", present_rad);
+        printf("% 4.2f ", target_angle);
+        printf("% 4.2f ", new_tag_angle);
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
     void set_target(int16_t angle) {
-      if(angle >= -60) {
+      if(angle >= -M_PI / 3 * 1e3) {
         target_angle = angle * 1e-3;
       } else {
         target_angle = -60 * deg2enc;
@@ -169,11 +179,19 @@ struct Mechanism {
     }
     bool is_top() const {
       auto present = (fp->get_enc() - origin);
-      bool top = 80 * deg2enc < present && present < 100 * deg2enc;
+      bool top = 75 * deg2enc < present && present < 105 * deg2enc;
       return state == Running && top;
     }
     bool is_up() const {
-      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 3;
+      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 6;
+    }
+    void enter_running() {
+      origin = fp->get_enc() + 60 * deg2enc;
+      c620->set_raw_tgt_current(0);
+      state = Running;
+      pid.reset();
+      pre = HighResClock::now();
+      calibrate_start = std::nullopt;
     }
     C620* c620;
     FirstPenguin* fp;
@@ -184,50 +202,68 @@ struct Mechanism {
     } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     float target_angle = NAN;
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 23000;
+    static constexpr int enc_interval = 2680;
     static constexpr int max_length = 900;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
-    void task(Mechanism* mech) {
+    void task() {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
+        printf("len:stop ");
         fp->set_raw_duty(0);
-        if(mech->arm_angle.is_top()) {
-          origin = fp->get_enc();
-          state = Running;
-          pre = HighResClock::now();
+        enter_running();
+      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+        auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 1500ms) {
+          // キャリブレーション
+          printf("len:calibrate ");
+          fp->set_raw_duty(-15000);
+        } else {
+          // 一定時間 リミット踏めなかったらそこを原点にする
+          printf("len:stop calibrate ");
+          fp->set_raw_duty(0);
+          enter_running();
         }
-      } else if(state == Waiting && (!std::isnan(pid.get_target()) || mech->arm_angle.is_top())) {
-        // キャリブレーション
-        printf("len:calibrate");
-        fp->set_raw_duty(-3000);
-      } else if(state == Running && !mech->arm_angle.is_up()) {
-        // 角度調整が下がれば原点を忘れる -> 上げるたびキャリブレーション必須
-        origin = NAN;
-        state = Waiting;
       } else if(state == Running) {
         auto now = HighResClock::now();
         if(!lim->read()) origin = fp->get_enc();
-        pid.update((fp->get_enc() - origin) * enc_to_m, now - pre);
+        const float present_length = (fp->get_enc() - origin) * enc_to_m;
+        constexpr float max_vel = 1200 * 1e-3;  // [m/s]
+        std::chrono::duration<float> dt = now - pre;
+        const float max = max_vel * dt.count();
+        const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+        float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
+        pid.set_target(new_tag_length);
+        pid.update(present_length, now - pre);
         fp->set_duty(pid.get_output());
         pre = now;
         printf("len:");
         printf("%1d ", !lim->read());
         printf("%4ld ", fp->get_enc() - origin);
-        printf("%4d ", (int)((fp->get_enc() - origin) * enc_to_m * 1e3));
+        printf("%4d ", (int)(present_length * 1e3));
+        printf("%4d ", (int)(new_tag_length * 1e3));
         printf("%6d\t", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {
       if(length >= 0) {
-        pid.set_target(length * 1e-3);
+        target_length = length * 1e-3;
       } else {
-        pid.set_target(0);
+        target_length = NAN;
         state = Waiting;
       }
+    }
+    void enter_running() {
+      calibrate_start = std::nullopt;
+      origin = fp->get_enc();
+      state = Running;
+      pid.reset();
+      pre = HighResClock::now();
     }
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -237,17 +273,16 @@ struct Mechanism {
     } state = Waiting;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    float target_length = NAN;
     int32_t origin = 0;
   };
   struct LargeWheel {
     void task() {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
-      fp_arr[0]->set_raw_duty(duty);
-      fp_arr[1]->set_raw_duty(-duty);
       c620_arr[0]->set_raw_tgt_current(duty);
       c620_arr[1]->set_raw_tgt_current(-duty);
     }
-    FirstPenguin* fp_arr[2];
     C620* c620_arr[2];
     int16_t tag_duty = 0;
     int16_t duty = 0;
@@ -258,7 +293,7 @@ struct Mechanism {
     expander.task();
     collector.task();
     arm_angle.task();
-    arm_length.task(this);
+    arm_length.task();
     large_wheel.task();
   }
 

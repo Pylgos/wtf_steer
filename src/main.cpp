@@ -47,10 +47,10 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-49.9)};
-Amt21 rear_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(85.7)};
-Amt21 rear_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(6.8)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(71.6)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-50.8)};
+Amt21 rear_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(82.9)};
+Amt21 rear_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(7.9)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(70.2)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -112,11 +112,9 @@ void write_can() {
 
   if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
-    if(!can1.write(fp_msg)) {
+    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg()) || !can1.write(fp_mech[1].to_msg())) {
       printf("failed to write first penguin msg\n");
     }
-    can1.write(fp_mech[0].to_msg());
-    can1.write(fp_mech[1].to_msg());
   }
 
   if(can2.isOpened()) {
@@ -161,9 +159,9 @@ Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
     .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .lim_top = &limit_sw[5]},
     .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
-    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][2], .lim = &limit_sw[3]},
+    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
-    .large_wheel = {.fp_arr = {&fp_mech[1][2], &fp_mech[1][3]}, .c620_arr = {&c620_array[5], &c620_array[6]}},
+    .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
 
 int main() {
@@ -265,7 +263,7 @@ int main() {
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
-      printf("% 4.1f ", steer_encoders[i]->get_angle().deg());
+      printf("% 6.1f ", steer_encoders[i]->get_angle().deg());
     }
 
     switch(controller.get_state()) {
@@ -299,6 +297,7 @@ int main() {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
+        for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
 
         controller.set_odom(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
       } break;
