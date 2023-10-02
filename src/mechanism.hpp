@@ -72,7 +72,7 @@ struct Mechanism {
     }
     void set_target(int16_t height) {
       if(height >= 0) {
-        target = height / 900.0f;
+        target = height / 1000.0f;
       } else {
         // キャリブレーション
         target = 0;
