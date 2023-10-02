@@ -219,12 +219,12 @@ struct Mechanism {
       } else if(state == Waiting && !std::isnan(pid.get_target())) {
         auto now = HighResClock::now();
         if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 3s) {
+        if(now - *calibrate_start < 1500ms) {
           // キャリブレーション
           printf("len:calibrate ");
           fp->set_raw_duty(-15000);
         } else {
-          // 3s リミット踏めなかったらそこを原点にする
+          // 一定時間 リミット踏めなかったらそこを原点にする
           printf("len:stop calibrate ");
           fp->set_raw_duty(0);
           enter_running();
