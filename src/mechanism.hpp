@@ -43,6 +43,7 @@ struct Mechanism {
         origin = fp->get_enc();
         fp->set_raw_duty(0);
         state = Running;
+        pid.reset();
         pre = HighResClock::now();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
@@ -188,6 +189,7 @@ struct Mechanism {
       origin = fp->get_enc() + 60 * deg2enc;
       c620->set_raw_tgt_current(0);
       state = Running;
+      pid.reset();
       pre = HighResClock::now();
       calibrate_start = std::nullopt;
     }
@@ -260,6 +262,7 @@ struct Mechanism {
       calibrate_start = std::nullopt;
       origin = fp->get_enc();
       state = Running;
+      pid.reset();
       pre = HighResClock::now();
     }
     FirstPenguin* fp;
