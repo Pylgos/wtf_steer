@@ -42,13 +42,19 @@ struct Mechanism {
         // 原点合わせ
         origin = fp->get_enc();
         fp->set_raw_duty(0);
-        state = Running;
-        pid.reset();
-        pre = HighResClock::now();
+        enter_running();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
-        printf("exp:calibrate ");
-        fp->set_raw_duty(3000);
+        auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 3s) {
+          printf("exp:calibrate ");
+          fp->set_raw_duty(15000);
+
+        } else {
+          printf("exp:calibrate stop ");
+          enter_running();
+        }
       } else if(state == Running) {
         if(!lim->read()) origin = fp->get_enc();
         if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) normalization = 1.0f / (fp->get_enc() - origin);
@@ -79,6 +85,13 @@ struct Mechanism {
         state = Waiting;
       }
     }
+    void enter_running() {
+      calibrate_start = std::nullopt;
+      origin = fp->get_enc();
+      state = Running;
+      pid.reset();
+      pre = HighResClock::now();
+    }
     FirstPenguin* fp;
     DigitalIn* lim;
     DigitalIn* lim_top;
@@ -89,6 +102,7 @@ struct Mechanism {
     float target = NAN;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     int32_t origin = 0;
     float normalization = 1.0f / enc_interval;
   };
