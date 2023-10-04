@@ -47,7 +47,7 @@ struct Mechanism {
         // キャリブレーション
         auto now = HighResClock::now();
         if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 3s) {
+        if(now - *calibrate_start < 1500ms) {
           printf("exp:calibrate ");
           fp->set_raw_duty(15000);
 
