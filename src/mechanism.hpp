@@ -156,7 +156,7 @@ struct Mechanism {
           c620->set_raw_tgt_current(2000);
         } else {
           // 3s リミット踏めなかったらそこを原点にする
-          printf("len:stop calibrate ");
+          printf("ang:stop calibrate ");
           enter_running();
         }
       } else if(state == Running) {
@@ -230,7 +230,7 @@ struct Mechanism {
         printf("len:stop ");
         fp->set_raw_duty(0);
         enter_running();
-      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+      } else if(state == Waiting && !std::isnan(target_length)) {
         auto now = HighResClock::now();
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 1500ms) {
