@@ -268,7 +268,7 @@ struct Mechanism {
       if(length >= 0) {
         target_length = length * 1e-3;
       } else {
-        target_length = NAN;
+        target_length = 0;
         state = Waiting;
       }
     }
