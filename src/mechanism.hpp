@@ -82,6 +82,7 @@ struct Mechanism {
       } else {
         // キャリブレーション
         target = 0;
+        top = std::nullopt;
         state = Waiting;
       }
     }
