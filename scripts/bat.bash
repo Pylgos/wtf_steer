@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
 cd "${BASH_SOURCE[0]%/*}"/..
-ssh -t robotclub@robotclub-latitude.local \
+PC=robotclub@robotclub-latitude.local
+ssh -t "$PC" \
   watch acpi
