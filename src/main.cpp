@@ -3,6 +3,7 @@
 #include <advanced_can.hpp>
 #include <amt21.hpp>
 #include <anglelib.hpp>
+#include <bno055.hpp>
 #include <c620.hpp>
 #include <controller.hpp>
 #include <first_penguin.hpp>
@@ -28,6 +29,7 @@ Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
 AdvancedCAN can1;
 AdvancedCAN can2;
 Timer timer;
+Bno055 bno055{PA_0, PA_1};
 DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
@@ -155,6 +157,12 @@ int update_steer_encoders() {
   return error_count;
 }
 
+/// @brief bno055から姿勢角を取得
+/// @return 1 if success, 0 otherwise.
+bool update_gyro() {
+  return bno055.request_euler_angle() == Bno055::Response::WRITE_SUCCESS;
+}
+
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
     .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .lim_top = &limit_sw[5]},
@@ -168,6 +176,7 @@ int main() {
   printf("start\n");
 
   try_init_can();
+  bno055.init();
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
@@ -260,6 +269,7 @@ int main() {
     if(error_count > 0) {
       continue;
     }
+    if(!update_gyro()) continue;
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
