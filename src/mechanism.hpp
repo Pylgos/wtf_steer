@@ -22,6 +22,7 @@ struct Mechanism {
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
+      printf("don:%d ", lim[1] << 1 | lim[0]);
       if(dir == 1 && !lim[0]) {
         fp->set_raw_duty(8000);
       } else if(dir == -1 && !lim[1]) {
@@ -40,18 +41,23 @@ struct Mechanism {
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
-        origin = fp->get_enc();
+        set_origin();
         fp->set_raw_duty(0);
-        state = Running;
-        pid.reset();
-        pre = HighResClock::now();
+        enter_running();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
-        printf("exp:calibrate ");
-        fp->set_raw_duty(3000);
+        auto now = HighResClock::now();
+        if(!calibrate_start) calibrate_start = now;
+        if(now - *calibrate_start < 1500ms) {
+          printf("exp:calibrate ");
+          fp->set_raw_duty(15000);
+        } else {
+          printf("exp:calibrate stop ");
+          enter_running();
+        }
       } else if(state == Running) {
-        if(!lim->read()) origin = fp->get_enc();
-        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) normalization = 1.0f / (fp->get_enc() - origin);
+        if(!lim->read()) set_origin();
+        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) set_top();
         auto now = HighResClock::now();
         float present_length = (fp->get_enc() - origin) * normalization;
         // ローパスフィルタ
@@ -76,8 +82,28 @@ struct Mechanism {
       } else {
         // キャリブレーション
         target = 0;
+        top = std::nullopt;
         state = Waiting;
       }
+    }
+    void enter_running() {
+      calibrate_start = std::nullopt;
+      origin = fp->get_enc();
+      state = Running;
+      pid.reset();
+      pre = HighResClock::now();
+    }
+    void set_origin() {
+      origin = fp->get_enc();
+      if(top) {
+        normalization = 1.0f / (*top - origin);
+      } else {
+        normalization = 1.0f / enc_interval;
+      }
+    }
+    void set_top() {
+      top = fp->get_enc();
+      normalization = 1.0f / (*top - origin);
     }
     FirstPenguin* fp;
     DigitalIn* lim;
@@ -89,7 +115,9 @@ struct Mechanism {
     float target = NAN;
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
+    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     int32_t origin = 0;
+    std::optional<int32_t> top = std::nullopt;
     float normalization = 1.0f / enc_interval;
   };
   struct Collector {
@@ -142,7 +170,7 @@ struct Mechanism {
           c620->set_raw_tgt_current(2000);
         } else {
           // 3s リミット踏めなかったらそこを原点にする
-          printf("len:stop calibrate ");
+          printf("ang:stop calibrate ");
           enter_running();
         }
       } else if(state == Running) {
@@ -216,7 +244,7 @@ struct Mechanism {
         printf("len:stop ");
         fp->set_raw_duty(0);
         enter_running();
-      } else if(state == Waiting && !std::isnan(pid.get_target())) {
+      } else if(state == Waiting && !std::isnan(target_length)) {
         auto now = HighResClock::now();
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 1500ms) {
@@ -254,7 +282,7 @@ struct Mechanism {
       if(length >= 0) {
         target_length = length * 1e-3;
       } else {
-        target_length = NAN;
+        target_length = 0;
         state = Waiting;
       }
     }
