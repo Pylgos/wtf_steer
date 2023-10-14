@@ -212,7 +212,8 @@ class Controller {
       last_state_publish_ = now;
     }
 
-    publish_odom();
+    publish_vel();
+    publish_pose();
   }
 
   void activate() {
@@ -288,9 +289,13 @@ class Controller {
     return state_;
   }
 
-  void set_odom(Vec2 linear, float angular) {
+  void set_vel(Vec2 linear, float angular) {
     odom_linear_vel_ = linear;
     odom_ang_vel_ = angular;
+  }
+  void set_pose(Vec2 linear, float angular) {
+    odom_linear_pose_ = linear;
+    odom_ang_pose_ = angular;
   }
 
   PidGain get_steer_gain() {
@@ -331,6 +336,8 @@ class Controller {
   PidGain expander_gain_{};
   Vec2 odom_linear_vel_{0, 0};
   float odom_ang_vel_ = 0;
+  Vec2 odom_linear_pose_{0, 0};
+  float odom_ang_pose_ = 0;
 
   void asgn(float& dst, const ParamValue& val) {
     if(val.type == ParamType::FLOAT) dst = val.float_value;
@@ -361,18 +368,23 @@ class Controller {
     }
   }
 
-  void publish_odom() {
-    CANMessage msg;
-    msg.id = Feedback::ID;
-    msg.len = 8;
-    msg.format = CANStandard;
-    msg.type = CANData;
+  void publish_vel() {
     Feedback fb;
-    fb.tag = Feedback::Tag::ODOMETRY;
+    fb.tag = Feedback::Tag::VELOCITY;
     fb.odometry.vx = odom_linear_vel_.x * 1000;
     fb.odometry.vy = odom_linear_vel_.y * 1000;
     fb.odometry.ang_vel = odom_ang_vel_ * 1000;
-    memcpy(msg.data, &fb, sizeof(fb));
+    CANMessage msg{Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
+    can_write_impl_(msg);
+  }
+
+  void publish_pose() {
+    Feedback fb;
+    fb.tag = Feedback::Tag::POSE;
+    fb.position.x = odom_linear_pose_.x * 1000;
+    fb.position.y = odom_linear_pose_.y * 1000;
+    fb.position.yaw = odom_ang_pose_ * 1000;
+    CANMessage msg{Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
     can_write_impl_(msg);
   }
 

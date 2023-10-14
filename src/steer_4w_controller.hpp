@@ -39,6 +39,8 @@ class Steer4WController {
     }
     odom_ang_vel_ = ang_vel;
     odom_linear_vel_ = linear_vel;
+    odom_ang_pose_ += ang_vel * std::chrono::duration<float>(dt).count();
+    odom_linear_pose_ += linear_vel * std::chrono::duration<float>(dt).count();
   }
 
   void start_unwinding() {
@@ -115,6 +117,14 @@ class Steer4WController {
     return odom_ang_vel_;
   }
 
+  Vec2 get_odom_linear_pose() {
+    return odom_linear_pose_;
+  }
+
+  float get_odom_ang_pose() {
+    return odom_ang_pose_;
+  }
+
  private:
   void on_unit_unwound(bool success) {
     if(success) {
@@ -138,6 +148,8 @@ class Steer4WController {
 
   Vec2 odom_linear_vel_{0, 0};
   float odom_ang_vel_ = 0;
+  Vec2 odom_linear_pose_{0, 0};
+  float odom_ang_pose_ = 0;
 
   std::function<void(bool)> on_unwound_ = nullptr;
   size_t unwound_success_count_ = 0;

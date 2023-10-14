@@ -309,7 +309,8 @@ int main() {
         }
         for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
 
-        controller.set_odom(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
+        controller.set_vel(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
+        controller.set_pose(steer_controller.get_odom_linear_pose(), bno055.get_x_rad());
       } break;
     }
 
