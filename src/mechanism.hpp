@@ -57,9 +57,8 @@ struct Mechanism {
         }
       } else if(state == Running) {
         if(!lim->read()) set_origin();
-        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) set_top();
         auto now = HighResClock::now();
-        float present_length = (fp->get_enc() - origin) * normalization;
+        float present_length = 1.0f / enc_interval * (fp->get_enc() - origin);
         // ローパスフィルタ
         float previous_tgt = pid.get_target();
         if(std::isnan(previous_tgt)) previous_tgt = present_length;
@@ -69,7 +68,7 @@ struct Mechanism {
         fp->set_duty(-pid.get_output());
         pre = now;
         printf("exp:");
-        printf("%1d ", !lim_top->read() << 1 | !lim->read());
+        printf("%1d ", !lim->read());
         printf("% 6ld ", fp->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
@@ -82,7 +81,6 @@ struct Mechanism {
       } else {
         // キャリブレーション
         target = 0;
-        top = std::nullopt;
         state = Waiting;
       }
     }
@@ -95,19 +93,9 @@ struct Mechanism {
     }
     void set_origin() {
       origin = fp->get_enc();
-      if(top) {
-        normalization = 1.0f / (*top - origin);
-      } else {
-        normalization = 1.0f / enc_interval;
-      }
-    }
-    void set_top() {
-      top = fp->get_enc();
-      normalization = 1.0f / (*top - origin);
     }
     FirstPenguin* fp;
     DigitalIn* lim;
-    DigitalIn* lim_top;
     enum {
       Waiting,
       Running,
@@ -117,8 +105,6 @@ struct Mechanism {
     decltype(HighResClock::now()) pre = {};
     std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
     int32_t origin = 0;
-    std::optional<int32_t> top = std::nullopt;
-    float normalization = 1.0f / enc_interval;
   };
   struct Collector {
     void task() {
