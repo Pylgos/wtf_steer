@@ -49,7 +49,7 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-1.2 - 1.8 + 0.9)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-1.2 - 1.8 + 0.9 + 19.8)};
 Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(70.8 + 1.3 + 0.7 - 4.8 + 2.5 - 1.0)};
 Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(26.4)};
 Amt21 front_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(3.3 + 0.4)};
@@ -258,8 +258,6 @@ int main() {
   dt_timer.start();
   ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
 
-  // controller.activate();
-
   while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
     dt_timer.reset();
@@ -307,7 +305,14 @@ int main() {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
-        for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
+        for(auto& e: mech.large_wheel.c620_arr) printf("% 4.1f ", e->get_actual_current());
+        // for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
+        // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
+        // for(auto& e: fp_mech[1]) printf("% 6d ", e.get_raw_duty());
+        // printf("enc:");
+        // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
+        // for(auto& e: fp_mech[1]) printf("% 6ld ", e.get_enc());
+        // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
 
         controller.set_vel(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
         controller.set_pose(steer_controller.get_odom_linear_pose(), bno055.get_x_rad());
@@ -315,6 +320,8 @@ int main() {
     }
 
     mech.task();
+    // printf("lim:");
+    // for(auto& e: limit_sw) printf("%d ", e.read());
     write_can();
     printf("\n");
 
