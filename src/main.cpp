@@ -212,7 +212,7 @@ int main() {
 
   controller.on_donfan([](int8_t dir) {
     printf("donfan % 2d\n", dir);
-    mech.donfan.dir = dir;
+    mech.donfan.set_dir(dir);
   });
   controller.on_expander([](int16_t height) {
     mech.expander.set_target(height);

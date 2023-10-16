@@ -22,19 +22,27 @@ struct Mechanism {
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
-      printf("don:%d ", lim[1] << 1 | lim[0]);
-      if(dir == 1 && !lim[0]) {
+      if(dir_ == 1 && !lim[0] && !is_timeout()) {
         fp->set_raw_duty(8000);
-      } else if(dir == -1 && !lim[1]) {
+      } else if(dir_ == -1 && !lim[1] && !is_timeout()) {
         fp->set_raw_duty(-8000);
       } else {
         fp->set_raw_duty(0);
       }
     }
+    void set_dir(uint8_t dir) {
+      dir_ = dir;
+      pre_ = HighResClock::now();
+    }
+    bool is_timeout() {
+      auto now = HighResClock::now();
+      return now - pre_ < 3s;
+    }
     FirstPenguin* fp;
     DigitalIn* lim_fwd;
     DigitalIn* lim_rev;
-    int8_t dir = 0;
+    int8_t dir_ = 0;
+    HighResClock::time_point pre_;
   };
   struct Expander {
     static constexpr int enc_interval = -1474;
