@@ -161,7 +161,7 @@ struct Mechanism {
         if(now - *calibrate_start < 3s) {
           // キャリブレーション
           printf("ang:calibrate ");
-          c620->set_raw_tgt_current(2000);
+          c620->set_raw_tgt_current(-2000);
         } else {
           // 3s リミット踏めなかったらそこを原点にする
           printf("ang:stop calibrate ");
@@ -180,7 +180,7 @@ struct Mechanism {
         pid.set_target(new_tag_angle);
         pid.update(present_rad, now - pre);
         float anti_gravity = 1500 * std::cos(present_rad);
-        c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
+        c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         pre = now;
         printf("ang:");
         printf("%1d ", !lim->read());
