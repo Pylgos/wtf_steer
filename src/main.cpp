@@ -157,10 +157,24 @@ int update_steer_encoders() {
   return error_count;
 }
 
+static bool gyro_initialized = false;
+bool try_init_gyro() {
+  return gyro_initialized || (gyro_initialized = bno055.try_init(10ms));
+}
 /// @brief bno055から姿勢角を取得
 /// @return 1 if success, 0 otherwise.
 bool update_gyro() {
-  return bno055.request_euler_angle() == Bno055::Response::WRITE_SUCCESS;
+  static int error_count = 0;
+  if(try_init_gyro()) {
+    if(bno055.request_euler_x() == Bno055::Response::WRITE_SUCCESS) {
+      error_count = 0;
+      return true;
+    } else if(++error_count > 10) {
+      error_count = 0;
+      gyro_initialized = false;
+    }
+  }
+  return false;
 }
 
 Mechanism mech = {
@@ -176,7 +190,7 @@ int main() {
   printf("start\n");
 
   try_init_can();
-  bno055.init();
+  try_init_gyro();
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
@@ -270,6 +284,7 @@ int main() {
     if(!update_gyro()) continue;
     controller.update(timer.elapsed_time());
 
+    printf("%4.2f ", bno055.get_x_rad());
     for(size_t i = 0; i < 4; i++) {
       printf("% 6.1f ", steer_encoders[i]->get_angle().deg());
     }
