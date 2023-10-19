@@ -229,7 +229,7 @@ struct Mechanism {
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 2680;
+    static constexpr int enc_interval = 15000;
     static constexpr int max_length = 900;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task() {
