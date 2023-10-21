@@ -10,6 +10,7 @@
 #include <mechanism.hpp>
 #include <pid_controller.hpp>
 #include <rs485.hpp>
+#include <servo.hpp>
 #include <steer_4w_controller.hpp>
 #include <steer_angle_controller.hpp>
 #include <steer_unit_controller.hpp>
@@ -49,6 +50,8 @@ FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
+ServoArray servo_array{140};
+Servo* const collector_servo = &servo_array[0];
 Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-1.2 - 1.8 + 0.9 + 19.8)};
 Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(70.8 + 1.3 + 0.7 - 4.8 + 2.5 - 1.0)};
 Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(26.4)};
@@ -116,6 +119,8 @@ void write_can() {
     const auto fp_msg = first_penguin_array.to_msg();
     if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg()) || !can1.write(fp_mech[1].to_msg())) {
       printf("failed to write first penguin msg\n");
+    } else if(!can1.write(servo_array.to_msg())) {
+      printf("failed to write servo msg\n");
     }
   }
 
@@ -180,7 +185,7 @@ bool update_gyro() {
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
     .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9]},
-    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
+    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2], .servo = collector_servo},
     .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},

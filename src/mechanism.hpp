@@ -7,6 +7,7 @@
 #include <first_penguin.hpp>
 #include <optional>
 #include <pid_controller.hpp>
+#include <servo.hpp>
 
 struct Mechanism {
   void set_arm_angle_gain(PidGain gain) {
@@ -126,17 +127,26 @@ struct Mechanism {
       }
 
       switch(state) {
-        case Stop:
+        case Stop: {
+          servo->set_deg(45);
           fp->set_raw_duty(0);
           break;
-        case Running:
-        case Storing:
+        }
+        case Running: {
+          servo->set_deg(90);
           fp->set_raw_duty(-8000);
           break;
+        }
+        case Storing: {
+          servo->set_deg(45);
+          fp->set_raw_duty(-8000);
+          break;
+        }
       }
     }
     FirstPenguin* fp;
     DigitalIn* lim;
+    Servo* servo;
     enum {
       Stop,
       Running,
