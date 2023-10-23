@@ -51,6 +51,7 @@ struct Mechanism {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
         set_origin();
+        set_lock(false);
         fp->set_raw_duty(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target)) {
@@ -59,6 +60,7 @@ struct Mechanism {
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 1500ms) {
           printf("exp:calibrate ");
+          set_lock(false);
           fp->set_raw_duty(15000);
         } else {
           printf("exp:calibrate stop ");
@@ -75,6 +77,8 @@ struct Mechanism {
         pid.set_target(previous_tgt);
         pid.update(present_length, now - pre);
         fp->set_duty(-pid.get_output());
+        // 目標値が現在位置より下ならlock
+        set_lock(previous_tgt - present_length < 0);
         pre = now;
         printf("exp:");
         printf("%1d ", !lim->read());
@@ -83,6 +87,9 @@ struct Mechanism {
         printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
       }
+    }
+    void set_lock(bool is_lock) {
+      servo->set_deg(is_lock ? 45 : 90);
     }
     void set_target(int16_t height) {
       if(height >= 0) {
@@ -105,6 +112,7 @@ struct Mechanism {
     }
     FirstPenguin* fp;
     DigitalIn* lim;
+    Servo* servo;
     enum {
       Waiting,
       Running,

@@ -52,6 +52,8 @@ const std::array<FirstPenguin*, 4> steer_motors = {
 
 ServoArray servo_array{140};
 Servo* const collector_servo = &servo_array[0];
+Servo* const expander_servo = &servo_array[1];
+
 Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-1.2 - 1.8 + 0.9 + 19.8)};
 Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(70.8 + 1.3 + 0.7 - 4.8 + 2.5 - 1.0)};
 Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(26.4)};
@@ -184,7 +186,7 @@ bool update_gyro() {
 
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
-    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9]},
+    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .servo = expander_servo},
     .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2], .servo = collector_servo},
     .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
     .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
