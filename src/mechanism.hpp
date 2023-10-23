@@ -163,9 +163,10 @@ struct Mechanism {
     bool collecting = false;
   };
   struct ArmAngle {
+    static constexpr int top_deg = 123;
+    static constexpr int bottom_deg = -25;
     static constexpr int enc_interval = 3800;
-    static constexpr int deg2enc = enc_interval / (100 - -60);
-    // -60deg -> 100deg
+    static constexpr int deg2enc = enc_interval / (top_deg - bottom_deg);
     static constexpr float enc_to_rad = M_PI / enc_interval;
     static constexpr float enc_to_mrad = enc_to_rad * 1000;
     void task() {
@@ -187,7 +188,7 @@ struct Mechanism {
         }
       } else if(state == Running) {
         auto now = HighResClock::now();
-        if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
+        if(!lim->read()) origin = fp->get_enc() - bottom_deg * deg2enc;
         auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
         constexpr float max_omega = 1.5f;  // [rad/sec]
         auto max = max_omega * chrono::duration<float>{now - pre}.count();
@@ -210,23 +211,15 @@ struct Mechanism {
       }
     }
     void set_target(int16_t angle) {
-      if(angle >= -M_PI / 3 * 1e3) {
+      if(angle >= bottom_deg * deg2enc * enc_to_mrad) {
         target_angle = angle * 1e-3;
       } else {
-        target_angle = -60 * deg2enc;
+        target_angle = bottom_deg * deg2enc;
         state = Waiting;
       }
     }
-    bool is_top() const {
-      auto present = (fp->get_enc() - origin);
-      bool top = 75 * deg2enc < present && present < 105 * deg2enc;
-      return state == Running && top;
-    }
-    bool is_up() const {
-      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 6;
-    }
     void enter_running() {
-      origin = fp->get_enc() + 60 * deg2enc;
+      origin = fp->get_enc() - bottom_deg * deg2enc;
       c620->set_raw_tgt_current(0);
       state = Running;
       pid.reset();
