@@ -35,17 +35,17 @@ DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12,
 
 C620Array c620_array;
 C620* const front_left_drive_motor = &c620_array[2];
-C620* const rear_left_drive_motor = &c620_array[3];
+C620* const rear_left_drive_motor = &c620_array[1];
 C620* const rear_right_drive_motor = &c620_array[0];
-C620* const front_right_drive_motor = &c620_array[1];
+C620* const front_right_drive_motor = &c620_array[3];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
-FirstPenguinArray first_penguin_array{40};
-FirstPenguinArray fp_mech[] = {{30}, {35}};
-FirstPenguin* const front_left_steer_motor = &first_penguin_array[2];
+FirstPenguinArray first_penguin_array{30};
+FirstPenguinArray fp_mech[] = {{35}, {40}};
+FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
 FirstPenguin* const rear_left_steer_motor = &first_penguin_array[1];
-FirstPenguin* const rear_right_steer_motor = &first_penguin_array[0];
+FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
 FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
