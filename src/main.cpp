@@ -156,7 +156,6 @@ int update_steer_encoders() {
   int error_count = 0;
   for(auto& enc: steer_encoders) {
     if(!enc->update_pos()) {
-      printf("failed to update steer encoder\n");
       error_count++;
     }
     wait_us(10);
@@ -284,11 +283,15 @@ int main() {
     dt_timer.reset();
 
     read_can();
-    int error_count = update_steer_encoders();
+    [[maybe_unused]] int error_count = update_steer_encoders();
     if(error_count > 0) {
+      printf("failed to update steer encoder %d\n", error_count);
       continue;
     }
-    if(!update_gyro()) continue;
+    if(!update_gyro()) {
+      printf("failed to update gyro\n");
+      continue;
+    }
     controller.update(timer.elapsed_time());
 
     printf("%4.2f ", bno055.get_x_rad());
