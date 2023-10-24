@@ -381,8 +381,8 @@ class Controller {
   void publish_pose() {
     Feedback fb;
     fb.tag = Feedback::Tag::POSE;
-    fb.position.x = odom_linear_pose_.x * 1000;
-    fb.position.y = odom_linear_pose_.y * 1000;
+    fb.position.x = (int16_t)(odom_linear_pose_.x * 1000);
+    fb.position.y = (int16_t)(odom_linear_pose_.y * 1000);
     fb.position.yaw = odom_ang_pose_ * 1000;
     CANMessage msg{Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
     can_write_impl_(msg);
