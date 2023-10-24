@@ -315,6 +315,8 @@ struct Mechanism {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
       c620_arr[0]->set_raw_tgt_current(duty);
       c620_arr[1]->set_raw_tgt_current(-duty);
+      printf("l:");
+      for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
     }
     C620* c620_arr[2];
     int16_t tag_duty = 0;
