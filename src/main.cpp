@@ -332,8 +332,9 @@ int main() {
 
         controller.set_vel(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
         printf("pos:");
-        printf("% 5.2f % 5.2f ", steer_controller.get_odom_linear_pose().x, steer_controller.get_odom_linear_pose().y);
-        printf("%4.2f ", bno055.get_x_rad());
+        printf("% 5d ", int(steer_controller.get_odom_linear_pose().x * 1e3));
+        printf("% 5d ", int(steer_controller.get_odom_linear_pose().y * 1e3));
+        printf("% 5d ", int(bno055.get_x_rad() * 1e3));
         controller.set_pose(steer_controller.get_odom_linear_pose(), bno055.get_x_rad());
       } break;
     }
