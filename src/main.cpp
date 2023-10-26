@@ -80,7 +80,7 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
+Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201 * 1.164059254, 0.201 * 1.164059254)};
 
 bool try_init_can() {
   bool both_initilized = true;
