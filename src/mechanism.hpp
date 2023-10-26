@@ -24,9 +24,9 @@ struct Mechanism {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
       if(dir_ == 1 && !lim[0] && !is_timeout()) {
-        fp->set_raw_duty(8000);
-      } else if(dir_ == -1 && !lim[1] && !is_timeout()) {
         fp->set_raw_duty(-8000);
+      } else if(dir_ == -1 && !lim[1] && !is_timeout()) {
+        fp->set_raw_duty(8000);
       } else {
         fp->set_raw_duty(0);
       }
