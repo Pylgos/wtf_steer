@@ -37,7 +37,7 @@ struct Mechanism {
     }
     bool is_timeout() {
       auto now = HighResClock::now();
-      return now - pre_ < 3s;
+      return now - pre_ > 3s;
     }
     FirstPenguin* fp;
     DigitalIn* lim_fwd;
