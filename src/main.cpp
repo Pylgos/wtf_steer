@@ -141,6 +141,7 @@ void read_can() {
 
   while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
+    first_penguin_array.parse_packet(msg);
     fp_mech[0].parse_packet(msg);
   }
 
@@ -183,11 +184,11 @@ bool update_gyro() {
 }
 
 Mechanism mech = {
-    .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
-    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[7], .servo = expander_servo},
-    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[3], .servo = collector_servo},
-    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[5]},
-    .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[6]},
+    .donfan = {.fp = &fp_mech[0][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
+    .expander = {.fp = &fp_mech[0][0], .enc = &first_penguin_array[2], .lim = &limit_sw[7], .servo = expander_servo},
+    .collector = {.fp = &fp_mech[0][2], .lim = &limit_sw[3], .servo = collector_servo},
+    .arm_angle = {.c620 = &c620_array[4], .enc = &first_penguin_array[1], .lim = &limit_sw[5]},
+    .arm_length = {.fp = &fp_mech[0][3], .enc = &first_penguin_array[0], .lim = &limit_sw[6]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
 
@@ -344,6 +345,7 @@ int main() {
     // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
     // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
     // printf("enc:");
+    // for(auto& e: first_penguin_array) printf("% 6ld ", e.get_enc());
     // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
     // printf("lim:");
     // for(size_t i = 0; i < size(limit_sw); ++i) printf("%d ", limit_sw[i].read() * (i + 1));

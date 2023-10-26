@@ -69,7 +69,7 @@ struct Mechanism {
       } else if(state == Running) {
         if(!lim->read()) set_origin();
         auto now = HighResClock::now();
-        float present_length = 1.0f / enc_interval * (fp->get_enc() - origin);
+        float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         // ローパスフィルタ
         float previous_tgt = pid.get_target();
         if(std::isnan(previous_tgt)) previous_tgt = present_length;
@@ -82,7 +82,7 @@ struct Mechanism {
         pre = now;
         printf("exp:");
         printf("%1d ", !lim->read());
-        printf("% 6ld ", fp->get_enc() - origin);
+        printf("% 6ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
@@ -102,15 +102,16 @@ struct Mechanism {
     }
     void enter_running() {
       calibrate_start = std::nullopt;
-      origin = fp->get_enc();
+      origin = enc->get_enc();
       state = Running;
       pid.reset();
       pre = HighResClock::now();
     }
     void set_origin() {
-      origin = fp->get_enc();
+      origin = enc->get_enc();
     }
     FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
     Servo* servo;
     enum {
@@ -188,8 +189,8 @@ struct Mechanism {
         }
       } else if(state == Running) {
         auto now = HighResClock::now();
-        if(!lim->read()) origin = fp->get_enc() - bottom_deg * deg2enc;
-        auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
+        if(!lim->read()) origin = enc->get_enc() - bottom_deg * deg2enc;
+        auto present_rad = (enc->get_enc() - origin) * enc_to_rad;
         constexpr float max_omega = 1.5f;  // [rad/sec]
         auto max = max_omega * chrono::duration<float>{now - pre}.count();
         float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
@@ -203,7 +204,7 @@ struct Mechanism {
         pre = now;
         printf("ang:");
         printf("%1d ", !lim->read());
-        printf("%6ld ", fp->get_enc() - origin);
+        printf("%6ld ", enc->get_enc() - origin);
         printf("% 4.2f ", present_rad);
         printf("% 4.2f ", target_angle);
         printf("% 4.2f ", new_tag_angle);
@@ -219,7 +220,7 @@ struct Mechanism {
       }
     }
     void enter_running() {
-      origin = fp->get_enc() - bottom_deg * deg2enc;
+      origin = enc->get_enc() - bottom_deg * deg2enc;
       c620->set_raw_tgt_current(0);
       state = Running;
       pid.reset();
@@ -227,7 +228,7 @@ struct Mechanism {
       calibrate_start = std::nullopt;
     }
     C620* c620;
-    FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
     enum {
       Waiting,
@@ -264,8 +265,8 @@ struct Mechanism {
         }
       } else if(state == Running) {
         auto now = HighResClock::now();
-        if(!lim->read()) origin = fp->get_enc();
-        const float present_length = (fp->get_enc() - origin) * enc_to_m;
+        if(!lim->read()) origin = enc->get_enc();
+        const float present_length = (enc->get_enc() - origin) * enc_to_m;
         constexpr float max_vel = 1200 * 1e-3;  // [m/s]
         std::chrono::duration<float> dt = now - pre;
         const float max = max_vel * dt.count();
@@ -277,7 +278,7 @@ struct Mechanism {
         pre = now;
         printf("len:");
         printf("%1d ", !lim->read());
-        printf("%4ld ", fp->get_enc() - origin);
+        printf("%4ld ", enc->get_enc() - origin);
         printf("%4d ", (int)(present_length * 1e3));
         printf("%4d ", (int)(new_tag_length * 1e3));
         printf("%6d\t", fp->get_raw_duty());
@@ -293,12 +294,13 @@ struct Mechanism {
     }
     void enter_running() {
       calibrate_start = std::nullopt;
-      origin = fp->get_enc();
+      origin = enc->get_enc();
       state = Running;
       pid.reset();
       pre = HighResClock::now();
     }
     FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
     enum {
       Waiting,
