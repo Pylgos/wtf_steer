@@ -3,7 +3,6 @@
 #include <advanced_can.hpp>
 #include <amt21.hpp>
 #include <anglelib.hpp>
-#include <bno055.hpp>
 #include <c620.hpp>
 #include <controller.hpp>
 #include <first_penguin.hpp>
@@ -30,7 +29,6 @@ Rs485 rs485{PB_6, PA_10, (int)2e6, PC_0};
 AdvancedCAN can1;
 AdvancedCAN can2;
 Timer timer;
-Bno055 bno055{PA_0, PA_1};
 DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
@@ -163,26 +161,6 @@ int update_steer_encoders() {
   return error_count;
 }
 
-static bool gyro_initialized = false;
-bool try_init_gyro() {
-  return gyro_initialized || (gyro_initialized = bno055.try_init(10ms));
-}
-/// @brief bno055から姿勢角を取得
-/// @return 1 if success, 0 otherwise.
-bool update_gyro() {
-  static int error_count = 0;
-  if(try_init_gyro()) {
-    if(bno055.request_euler_x() == Bno055::Response::WRITE_SUCCESS) {
-      error_count = 0;
-      return true;
-    } else if(++error_count > 10) {
-      error_count = 0;
-      gyro_initialized = false;
-    }
-  }
-  return false;
-}
-
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[0][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
     .expander = {.fp = &fp_mech[0][0], .enc = &first_penguin_array[2], .lim = &limit_sw[7], .servo = expander_servo},
@@ -196,7 +174,6 @@ int main() {
   printf("start\n");
 
   try_init_can();
-  try_init_gyro();
 
   controller.on_reset_pid([]() {
     printf("pid reset\n");
@@ -288,10 +265,6 @@ int main() {
       printf("failed to update steer encoder %d\n", error_count);
       continue;
     }
-    if(!update_gyro()) {
-      printf("failed to update gyro\n");
-      continue;
-    }
     controller.update(timer.elapsed_time());
 
     for(size_t i = 0; i < 4; i++) {
@@ -334,8 +307,8 @@ int main() {
         printf("pos:");
         printf("% 5d ", int(steer_controller.get_odom_linear_pose().x * 1e3));
         printf("% 5d ", int(steer_controller.get_odom_linear_pose().y * 1e3));
-        printf("% 5d ", int(bno055.get_x_rad() * 1e3));
-        controller.set_pose(steer_controller.get_odom_linear_pose(), bno055.get_x_rad());
+        printf("% 5d ", int(steer_controller.get_odom_ang_pose() * 1e3));
+        controller.set_pose(steer_controller.get_odom_linear_pose(), steer_controller.get_odom_ang_pose());
       } break;
     }
 
