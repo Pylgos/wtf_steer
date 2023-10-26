@@ -119,7 +119,7 @@ void write_can() {
 
   if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
-    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg()) || !can1.write(fp_mech[1].to_msg())) {
+    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg())) {
       printf("failed to write first penguin msg\n");
     } else if(!can1.write(servo_array.to_msg())) {
       printf("failed to write servo msg\n");
@@ -142,7 +142,6 @@ void read_can() {
   while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
     fp_mech[0].parse_packet(msg);
-    fp_mech[1].parse_packet(msg);
   }
 
   if(can2.isOpened()) {
@@ -343,11 +342,9 @@ int main() {
     printf("st:");
     for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
     // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
-    // for(auto& e: fp_mech[1]) printf("% 6d ", e.get_raw_duty());
     // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
     // printf("enc:");
     // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
-    // for(auto& e: fp_mech[1]) printf("% 6ld ", e.get_enc());
     // printf("lim:");
     // for(size_t i = 0; i < size(limit_sw); ++i) printf("%d ", limit_sw[i].read() * (i + 1));
     write_can();
