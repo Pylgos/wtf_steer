@@ -23,6 +23,7 @@ struct Mechanism {
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
+      printf("d:%d ", lim[1] << 1 | lim[0]);
       if(dir_ == 1 && !lim[0] && !is_timeout()) {
         fp->set_raw_duty(-8000);
       } else if(dir_ == -1 && !lim[1] && !is_timeout()) {
