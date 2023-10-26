@@ -184,11 +184,11 @@ bool update_gyro() {
 }
 
 Mechanism mech = {
-    .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
-    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .servo = expander_servo},
-    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2], .servo = collector_servo},
-    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
-    .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
+    .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
+    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[7], .servo = expander_servo},
+    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[3], .servo = collector_servo},
+    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[5]},
+    .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[6]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
 
@@ -349,7 +349,7 @@ int main() {
     // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
     // for(auto& e: fp_mech[1]) printf("% 6ld ", e.get_enc());
     // printf("lim:");
-    // for(auto& e: limit_sw) printf("%d ", e.read());
+    // for(size_t i = 0; i < size(limit_sw); ++i) printf("%d ", limit_sw[i].read() * (i + 1));
     write_can();
     printf("\n");
 
