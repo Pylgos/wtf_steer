@@ -164,9 +164,9 @@ int update_steer_encoders() {
 Mechanism mech = {
     .donfan = {.fp = &fp_mech[0][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
     .expander = {.fp = &fp_mech[0][0], .enc = &first_penguin_array[2], .lim = &limit_sw[7], .servo = expander_servo},
-    .collector = {.fp = &fp_mech[0][2], .lim = &limit_sw[3], .servo = collector_servo},
+    .collector = {.fp = &fp_mech[0][3], .lim = &limit_sw[3], .servo = collector_servo},
     .arm_angle = {.c620 = &c620_array[4], .enc = &first_penguin_array[1], .lim = &limit_sw[5]},
-    .arm_length = {.fp = &fp_mech[0][3], .enc = &first_penguin_array[0], .lim = &limit_sw[6]},
+    .arm_length = {.fp = &fp_mech[0][2], .enc = &first_penguin_array[0], .lim = &limit_sw[6]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
 
