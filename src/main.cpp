@@ -22,7 +22,7 @@ using namespace vmath;
 
 static constexpr chrono::microseconds loop_period = 1ms;
 static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
-static constexpr float wheel_radius = 0.05;
+static constexpr float wheel_radius = 0.05 / 0.853;
 
 
 BufferedSerial pc{USBTX, USBRX, 115200};
