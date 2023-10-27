@@ -62,7 +62,7 @@ struct Mechanism {
         if(now - *calibrate_start < 1500ms) {
           printf("exp:calibrate ");
           set_lock(false);
-          fp->set_raw_duty(15000);
+          fp->set_raw_duty(-15000);
         } else {
           printf("exp:calibrate stop ");
           enter_running();
@@ -77,7 +77,7 @@ struct Mechanism {
         previous_tgt += (target - previous_tgt) / 2;
         pid.set_target(previous_tgt);
         pid.update(present_length, now - pre);
-        fp->set_duty(-pid.get_output());
+        fp->set_duty(pid.get_output());
         // 目標値が現在位置より下ならlock
         set_lock(previous_tgt - present_length < 0);
         pre = now;
