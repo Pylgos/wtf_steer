@@ -183,6 +183,9 @@ class Controller {
         call(on_unwind_);
         break;
 
+      case Command::Tag::WALL_ALIGN_ASSIST:
+        call(on_wall_align_assist_, cmd.wall_align_assist.distance);
+        break;
       // mech
       case Command::Tag::SET_DONFAN_CMD:
         call(on_donfan_, cmd.set_donfan_cmd.dir);
@@ -262,6 +265,9 @@ class Controller {
     on_steer_offset_ = f;
   }
 
+  void on_wall_align_assist(std::function<void(uint16_t)> f) {
+    on_wall_align_assist_ = f;
+  }
   void on_unwind(std::function<void()> f) {
     on_unwind_ = f;
   }
@@ -399,6 +405,7 @@ class Controller {
   std::function<void()> on_deactivation_ = nullptr;
   std::function<void(int idx, anglelib::Anglef offset)> on_steer_offset_ = nullptr;
   std::function<void()> on_unwind_ = nullptr;
+  std::function<void(uint16_t)> on_wall_align_assist_ = nullptr;
   std::function<void(int8_t)> on_donfan_ = nullptr;
   std::function<void(int16_t)> on_expander_ = nullptr;
   std::function<void(bool)> on_collector_ = nullptr;

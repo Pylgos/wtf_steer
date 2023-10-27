@@ -207,6 +207,9 @@ int main() {
     steer_controller.start_unwinding();
   });
 
+  controller.on_wall_align_assist([](uint16_t distance) {
+    printf("wall assist % 4d\n", distance);
+  });
   controller.on_donfan([](int8_t dir) {
     printf("donfan % 2d\n", dir);
     mech.donfan.set_dir(dir);
