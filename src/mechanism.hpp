@@ -47,7 +47,7 @@ struct Mechanism {
     HighResClock::time_point pre_;
   };
   struct Expander {
-    static constexpr int enc_interval = -1474;
+    static constexpr int enc_interval = -12200;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
@@ -242,8 +242,8 @@ struct Mechanism {
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 15000;
-    static constexpr int max_length = 900;
+    static constexpr int enc_interval = 7700;
+    static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task() {
       // リミットスイッチが押されたら原点を初期化
