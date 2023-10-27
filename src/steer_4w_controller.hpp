@@ -40,7 +40,7 @@ class Steer4WController {
     odom_ang_vel_ = ang_vel;
     odom_linear_vel_ = linear_vel;
     odom_ang_pose_ += ang_vel * std::chrono::duration<float>(dt).count();
-    odom_linear_pose_ += linear_vel * std::chrono::duration<float>(dt).count();
+    odom_linear_pose_ += linear_vel.rotated(anglelib::Angle{odom_ang_pose_}) * std::chrono::duration<float>(dt).count();
   }
 
   void start_unwinding() {
