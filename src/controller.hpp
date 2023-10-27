@@ -389,7 +389,7 @@ class Controller {
     fb.tag = Feedback::Tag::POSE;
     fb.position.x = flow(odom_linear_pose_.x * 1000);
     fb.position.y = flow(odom_linear_pose_.y * 1000);
-    fb.position.yaw = flow(odom_ang_pose_ * 1000);
+    fb.position.yaw = anglelib::Direction{odom_ang_pose_}.rad() * 1000;
     CANMessage msg{Feedback::ID, reinterpret_cast<const uint8_t*>(&fb), sizeof(fb)};
     can_write_impl_(msg);
   }
