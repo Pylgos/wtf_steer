@@ -90,7 +90,7 @@ struct Mechanism {
       }
     }
     void set_lock(bool is_lock) {
-      servo->set_deg(is_lock ? 45 : 90);
+      servo->set_deg(is_lock ? 0 : 90);
     }
     void set_target(int16_t height) {
       if(height >= 0) {
