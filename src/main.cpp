@@ -288,7 +288,7 @@ int main() {
 
         auto now = HighResClock::now();
         if(now - last_c620 > 100ms) {
-          printf("detect emergency.");
+          printf("OMG!");
           steer_controller.reset();
         } else {
           steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
@@ -316,8 +316,8 @@ int main() {
     }
 
     mech.task();
-    printf("st:");
-    for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
+    // printf("st:");
+    // for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
     // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
     // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
     // printf("enc:");

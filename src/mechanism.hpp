@@ -135,7 +135,7 @@ struct Mechanism {
         state = Storing;
         collecting = false;
       }
-
+      printf("c%d ", state);
       switch(state) {
         case Stop: {
           servo->set_deg(45);
