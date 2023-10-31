@@ -66,14 +66,15 @@ struct Mechanism {
       } else if(state == Running) {
         if(!lim->read()) set_origin();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
-        // ローパスフィルタ
-        float previous_tgt = pid.get_target();
-        if(std::isnan(previous_tgt)) previous_tgt = present_length;
-        previous_tgt += (target - previous_tgt) / 2;
+        const auto dt = dt_timer();
+        const float previous_tgt = std::isnan(pid.get_target()) ? previous_tgt : pid.get_target();
+        constexpr float max_vel = 0.5;  // [m/s]
+        const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
+        const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
         // 目標値が現在位置より下ならlock
-        wait_lock_and(previous_tgt - present_length < 0, [&] {
-          pid.set_target(previous_tgt);
-          pid.update(present_length, dt());
+        wait_lock_and(new_tgt - present_length < 0, [&] {
+          pid.set_target(new_tgt);
+          pid.update(present_length, dt);
           fp->set_duty(pid.get_output());
         });
         printf("exp:");
@@ -103,7 +104,7 @@ struct Mechanism {
       origin = enc->get_enc();
       state = Running;
       pid.reset();
-      dt.reset();
+      dt_timer.reset();
     }
     void set_origin() {
       origin = enc->get_enc();
@@ -125,7 +126,7 @@ struct Mechanism {
     } state = Waiting;
     float target = NAN;
     PidController pid = {PidGain{}};
-    AwaitInterval<> dt{};
+    AwaitInterval<> dt_timer{};
     AwaitInterval<> calibrate_timeout{std::nullopt};
     AwaitInterval<> lock_wait{std::nullopt};
     int32_t origin = 0;
