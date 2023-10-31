@@ -61,8 +61,12 @@ struct Mechanism {
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 1500ms) {
           printf("exp:calibrate ");
-          set_lock(false);
-          fp->set_raw_duty(-15000);
+          if(!lock_time) {
+            set_lock(false);
+            lock_time = now;
+          } else if(now - *lock_time > 500ms) {
+            fp->set_raw_duty(-15000);
+          }
         } else {
           printf("exp:calibrate stop ");
           enter_running();
@@ -75,11 +79,26 @@ struct Mechanism {
         float previous_tgt = pid.get_target();
         if(std::isnan(previous_tgt)) previous_tgt = present_length;
         previous_tgt += (target - previous_tgt) / 2;
-        pid.set_target(previous_tgt);
-        pid.update(present_length, now - pre);
-        fp->set_duty(pid.get_output());
         // 目標値が現在位置より下ならlock
-        set_lock(previous_tgt - present_length < 0);
+        if(previous_tgt - present_length < 0) {
+          set_lock(true);
+          if(!lock_time) {
+            lock_time = now;
+          } else if(now - *lock_time > 500ms) {
+            pid.set_target(previous_tgt);
+            pid.update(present_length, now - pre);
+            fp->set_duty(pid.get_output());
+          }
+        } else {
+          set_lock(false);
+          if(!lock_time) {
+            lock_time = now;
+          } else if(now - *lock_time > 500ms) {
+            pid.set_target(previous_tgt);
+            pid.update(present_length, now - pre);
+            fp->set_duty(pid.get_output());
+          }
+        }
         pre = now;
         printf("exp:");
         printf("%1d ", !lim->read());
@@ -93,6 +112,7 @@ struct Mechanism {
       servo->set_deg(is_lock ? 0 : 90);
     }
     void set_target(int16_t height) {
+      lock_time = std::nullopt;
       if(height >= 0) {
         target = height / 1000.0f;
       } else {
@@ -103,6 +123,7 @@ struct Mechanism {
     }
     void enter_running() {
       calibrate_start = std::nullopt;
+      lock_time = std::nullopt;
       origin = enc->get_enc();
       state = Running;
       pid.reset();
@@ -123,6 +144,7 @@ struct Mechanism {
     PidController pid = {PidGain{}};
     decltype(HighResClock::now()) pre = {};
     std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    std::optional<decltype(HighResClock::now())> lock_time = std::nullopt;
     int32_t origin = 0;
   };
   struct Collector {
