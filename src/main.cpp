@@ -19,9 +19,9 @@ using namespace anglelib;
 using namespace vmath;
 
 
-static constexpr chrono::microseconds loop_period = 10ms;
+static constexpr auto loop_period = 10ms;
 static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
-static constexpr float wheel_radius = 0.05 / 0.853 * (9500.0 / 10987); 
+static constexpr float wheel_radius = 0.05 / 0.853 * (9500.0 / 10987);
 
 
 BufferedSerial pc{USBTX, USBRX, 115200};
@@ -256,7 +256,7 @@ int main() {
 
   Timer dt_timer;
   dt_timer.start();
-  ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
+  ThisThread::sleep_for(loop_period);
 
   while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
