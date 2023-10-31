@@ -3,6 +3,7 @@
 
 #include <mbed.h>
 
+#include <AwaitInterval.hpp>
 #include <c620.hpp>
 #include <first_penguin.hpp>
 #include <optional>
@@ -24,9 +25,9 @@ struct Mechanism {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
       printf("d:%d ", lim[1] << 1 | lim[0]);
-      if(dir_ == 1 && !lim[0] && !is_timeout()) {
+      if(dir_ == 1 && !lim[0] && !timeout(2s)) {
         fp->set_raw_duty(-8000);
-      } else if(dir_ == -1 && !lim[1] && !is_timeout()) {
+      } else if(dir_ == -1 && !lim[1] && !timeout(2s)) {
         fp->set_raw_duty(8000);
       } else {
         fp->set_raw_duty(0);
@@ -34,17 +35,13 @@ struct Mechanism {
     }
     void set_dir(uint8_t dir) {
       dir_ = dir;
-      pre_ = HighResClock::now();
-    }
-    bool is_timeout() {
-      auto now = HighResClock::now();
-      return now - pre_ > 2s;
+      timeout.reset();
     }
     FirstPenguin* fp;
     DigitalIn* lim_fwd;
     DigitalIn* lim_rev;
     int8_t dir_ = 0;
-    HighResClock::time_point pre_;
+    AwaitInterval<> timeout;
   };
   struct Expander {
     static constexpr int enc_interval = -12200;
@@ -57,9 +54,7 @@ struct Mechanism {
         enter_running();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
-        auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 1500ms) {
+        if(!calibrate_timeout.await(1500ms)) {
           printf("exp:calibrate ");
           wait_lock_and(false, [&] {
             fp->set_raw_duty(-15000);
@@ -70,7 +65,6 @@ struct Mechanism {
         }
       } else if(state == Running) {
         if(!lim->read()) set_origin();
-        auto now = HighResClock::now();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         // ローパスフィルタ
         float previous_tgt = pid.get_target();
@@ -79,10 +73,9 @@ struct Mechanism {
         // 目標値が現在位置より下ならlock
         wait_lock_and(previous_tgt - present_length < 0, [&] {
           pid.set_target(previous_tgt);
-          pid.update(present_length, now - pre);
+          pid.update(present_length, dt());
           fp->set_duty(pid.get_output());
         });
-        pre = now;
         printf("exp:");
         printf("%1d ", !lim->read());
         printf("% 6ld ", enc->get_enc() - origin);
@@ -95,7 +88,7 @@ struct Mechanism {
       servo->set_deg(is_lock ? 0 : 90);
     }
     void set_target(int16_t height) {
-      lock_time = std::nullopt;
+      lock_wait.stop();
       if(height >= 0) {
         target = height / 1000.0f;
       } else {
@@ -105,22 +98,20 @@ struct Mechanism {
       }
     }
     void enter_running() {
-      calibrate_start = std::nullopt;
-      lock_time = std::nullopt;
+      calibrate_timeout.stop();
+      lock_wait.stop();
       origin = enc->get_enc();
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
+      dt.reset();
     }
     void set_origin() {
       origin = enc->get_enc();
     }
     template<class F>
-    void wait_lock_and(bool is_lock, F f) {
-      if(!lock_time) {
-        set_lock(is_lock);
-        lock_time = HighResClock::now();
-      } else if(now - *lock_time > 500ms) {
+    void wait_lock_and(bool lock, F f) {
+      set_lock(lock);
+      if(lock_wait.await(500ms)) {
         f();
       }
     }
@@ -134,9 +125,9 @@ struct Mechanism {
     } state = Waiting;
     float target = NAN;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
-    std::optional<decltype(HighResClock::now())> lock_time = std::nullopt;
+    AwaitInterval<> dt{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
+    AwaitInterval<> lock_wait{std::nullopt};
     int32_t origin = 0;
   };
   struct Collector {
@@ -191,9 +182,7 @@ struct Mechanism {
         c620->set_raw_tgt_current(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target_angle)) {
-        const auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 3s) {
+        if(!calibrate_timeout.await(3s)) {
           // キャリブレーション
           printf("ang:calibrate ");
           c620->set_raw_tgt_current(-2000);
@@ -203,20 +192,19 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        auto now = HighResClock::now();
         if(!lim->read()) origin = enc->get_enc() - bottom_deg * deg2enc;
         auto present_rad = (enc->get_enc() - origin) * enc_to_rad;
+        const auto dt = dt_timer();
         constexpr float max_omega = 1.5f;  // [rad/sec]
-        auto max = max_omega * chrono::duration<float>{now - pre}.count();
+        auto max = max_omega * chrono::duration<float>{dt}.count();
         float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
         float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
         constexpr float max_distance = M_PI / 4;
         new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
         pid.set_target(new_tag_angle);
-        pid.update(present_rad, now - pre);
+        pid.update(present_rad, dt);
         float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
-        pre = now;
         printf("ang:");
         printf("%1d ", !lim->read());
         printf("%6ld ", enc->get_enc() - origin);
@@ -239,8 +227,8 @@ struct Mechanism {
       c620->set_raw_tgt_current(0);
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
-      calibrate_start = std::nullopt;
+      dt_timer.reset();
+      calibrate_timeout.stop();
     }
     C620* c620;
     const FirstPenguin* enc;
@@ -250,8 +238,8 @@ struct Mechanism {
       Running,
     } state = Waiting;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    AwaitInterval<> dt_timer{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_angle = NAN;
     int32_t origin = 0;
   };
@@ -266,9 +254,7 @@ struct Mechanism {
         fp->set_raw_duty(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target_length)) {
-        auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 1500ms) {
+        if(!calibrate_timeout.await(1500ms)) {
           // キャリブレーション
           printf("len:calibrate ");
           fp->set_raw_duty(-15000);
@@ -279,18 +265,16 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        auto now = HighResClock::now();
         if(!lim->read()) origin = enc->get_enc();
         const float present_length = (enc->get_enc() - origin) * enc_to_m;
         constexpr float max_vel = 1200 * 1e-3;  // [m/s]
-        std::chrono::duration<float> dt = now - pre;
-        const float max = max_vel * dt.count();
+        auto dt = dt_timer();
+        const float max = max_vel * std::chrono::duration<float>{dt}.count();
         const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
         float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
         pid.set_target(new_tag_length);
-        pid.update(present_length, now - pre);
+        pid.update(present_length, dt);
         fp->set_duty(pid.get_output());
-        pre = now;
         printf("len:");
         printf("%1d ", !lim->read());
         printf("%4ld ", enc->get_enc() - origin);
@@ -308,11 +292,11 @@ struct Mechanism {
       }
     }
     void enter_running() {
-      calibrate_start = std::nullopt;
+      calibrate_timeout.stop();
       origin = enc->get_enc();
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
+      dt_timer.reset();
     }
     FirstPenguin* fp;
     const FirstPenguin* enc;
@@ -322,8 +306,8 @@ struct Mechanism {
       Running,
     } state = Waiting;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    AwaitInterval<> dt_timer{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_length = NAN;
     int32_t origin = 0;
   };
