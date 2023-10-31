@@ -61,12 +61,9 @@ struct Mechanism {
         if(!calibrate_start) calibrate_start = now;
         if(now - *calibrate_start < 1500ms) {
           printf("exp:calibrate ");
-          if(!lock_time) {
-            set_lock(false);
-            lock_time = now;
-          } else if(now - *lock_time > 500ms) {
+          wait_lock_and(false, [&] {
             fp->set_raw_duty(-15000);
-          }
+          });
         } else {
           printf("exp:calibrate stop ");
           enter_running();
@@ -80,25 +77,11 @@ struct Mechanism {
         if(std::isnan(previous_tgt)) previous_tgt = present_length;
         previous_tgt += (target - previous_tgt) / 2;
         // 目標値が現在位置より下ならlock
-        if(previous_tgt - present_length < 0) {
-          set_lock(true);
-          if(!lock_time) {
-            lock_time = now;
-          } else if(now - *lock_time > 500ms) {
-            pid.set_target(previous_tgt);
-            pid.update(present_length, now - pre);
-            fp->set_duty(pid.get_output());
-          }
-        } else {
-          set_lock(false);
-          if(!lock_time) {
-            lock_time = now;
-          } else if(now - *lock_time > 500ms) {
-            pid.set_target(previous_tgt);
-            pid.update(present_length, now - pre);
-            fp->set_duty(pid.get_output());
-          }
-        }
+        wait_lock_and(previous_tgt - present_length < 0, [&] {
+          pid.set_target(previous_tgt);
+          pid.update(present_length, now - pre);
+          fp->set_duty(pid.get_output());
+        });
         pre = now;
         printf("exp:");
         printf("%1d ", !lim->read());
@@ -131,6 +114,15 @@ struct Mechanism {
     }
     void set_origin() {
       origin = enc->get_enc();
+    }
+    template<class F>
+    void wait_lock_and(bool is_lock, F f) {
+      if(!lock_time) {
+        set_lock(is_lock);
+        lock_time = HighResClock::now();
+      } else if(now - *lock_time > 500ms) {
+        f();
+      }
     }
     FirstPenguin* fp;
     const FirstPenguin* enc;
