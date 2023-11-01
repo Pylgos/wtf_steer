@@ -67,18 +67,19 @@ struct Mechanism {
         if(!lim->read()) set_origin();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         const auto dt = dt_timer();
-        const float previous_tgt = std::isnan(pid.get_target()) ? previous_tgt : pid.get_target();
+        const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
         constexpr float max_vel = 0.5;  // [m/s]
         const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
         const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
-        // 目標値が現在位置より下ならlock
-        wait_lock_and(new_tgt - present_length < 0, [&] {
+        // 目標値が現在位置より上ならlock
+        const bool is_lock = target - present_length > 0;
+        wait_lock_and(is_lock, [&] {
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
           fp->set_duty(pid.get_output());
         });
         printf("exp:");
-        printf("%1d ", !lim->read());
+        printf("%1d ", is_lock << 1 | !lim->read());
         printf("% 6ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
@@ -86,14 +87,15 @@ struct Mechanism {
       }
     }
     void set_lock(bool is_lock) {
-      servo->set_deg(is_lock ? 0 : 90);
+      servo->set_deg(is_lock ? 90 : 0);
     }
     void set_target(int16_t height) {
-      lock_wait.stop();
       if(height >= 0) {
-        target = height / 1000.0f;
+        if(target > height / 900.0f) lock_wait.stop();
+        target = height / 900.0f;
       } else {
         // キャリブレーション
+        lock_wait.stop();
         target = 0;
         state = Waiting;
       }
@@ -112,7 +114,7 @@ struct Mechanism {
     template<class F>
     void wait_lock_and(bool lock, F f) {
       set_lock(lock);
-      if(lock_wait.await(500ms)) {
+      if(lock_wait.elapsed(500ms)) {
         f();
       }
     }
@@ -316,8 +318,8 @@ struct Mechanism {
   struct LargeWheel {
     void task() {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
-      c620_arr[0]->set_raw_tgt_current(duty);
-      c620_arr[1]->set_raw_tgt_current(-duty);
+      c620_arr[0]->set_raw_tgt_current(-std::clamp((int)duty, -16384, 16384));
+      c620_arr[1]->set_raw_tgt_current(std::clamp((int)duty, -16384, 16384));
       printf("l:");
       for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
     }

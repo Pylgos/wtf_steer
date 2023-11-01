@@ -22,6 +22,13 @@ struct AwaitInterval {
     if(!pre_) pre_ = Clock::now();
     return this->operator()(interval);
   }
+  auto elapsed(typename Clock::duration interval = {}) {
+    if(!pre_) pre_ = Clock::now();
+    auto now = Clock::now();
+    auto dt = now - *pre_;
+    auto elapsed = dt > interval;
+    return Result{dt, elapsed};
+  }
   void reset(typename Clock::time_point init = Clock::now()) {
     pre_ = init;
   }
