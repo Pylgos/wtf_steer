@@ -148,13 +148,9 @@ struct Mechanism {
           fp->set_raw_duty(0);
           break;
         }
+        case Storing:
         case Running: {
           servo->set_deg(90);
-          fp->set_raw_duty(8000);
-          break;
-        }
-        case Storing: {
-          servo->set_deg(45);
           fp->set_raw_duty(8000);
           break;
         }
