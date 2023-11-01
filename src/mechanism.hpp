@@ -227,6 +227,9 @@ struct Mechanism {
       dt_timer.reset();
       calibrate_timeout.stop();
     }
+    float get_angle() const {
+      return state == Running ? (enc->get_enc() - origin) * enc_to_rad : NAN;
+    }
     C620* c620;
     const FirstPenguin* enc;
     DigitalIn* lim;
@@ -244,7 +247,7 @@ struct Mechanism {
     static constexpr int enc_interval = 7700;
     static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
-    void task() {
+    void task(ArmAngle* ang) {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
         printf("len:stop ");
@@ -271,7 +274,9 @@ struct Mechanism {
         float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
         pid.set_target(new_tag_length);
         pid.update(present_length, dt);
-        fp->set_duty(pid.get_output());
+        const float angle = ang->get_angle();
+        const float anti_gravity = std::isnan(angle) ? 0 : 0.05 * std::sin(angle);
+        fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
         printf("%1d ", !lim->read());
         printf("%4ld ", enc->get_enc() - origin);
@@ -326,7 +331,7 @@ struct Mechanism {
     expander.task();
     collector.task();
     arm_angle.task();
-    arm_length.task();
+    arm_length.task(&arm_angle);
     large_wheel.task();
   }
 
