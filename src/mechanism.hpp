@@ -57,7 +57,7 @@ struct Mechanism {
         if(!calibrate_timeout.await(1500ms)) {
           printf("exp:calibrate ");
           wait_lock_and(false, [&] {
-            fp->set_raw_duty(-15000);
+            fp->set_raw_duty(15000);
           });
         } else {
           printf("exp:calibrate stop ");
@@ -76,7 +76,7 @@ struct Mechanism {
         wait_lock_and(is_lock, [&] {
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
-          fp->set_duty(pid.get_output());
+          fp->set_duty(-pid.get_output());
         });
         printf("exp:");
         printf("%1d ", is_lock << 1 | !lim->read());
