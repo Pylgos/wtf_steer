@@ -57,7 +57,7 @@ struct Mechanism {
         if(!calibrate_timeout.await(1500ms)) {
           printf("exp:calibrate ");
           wait_lock_and(false, [&] {
-            fp->set_raw_duty(15000);
+            fp->set_raw_duty(10000);
           });
         } else {
           printf("exp:calibrate stop ");
@@ -68,7 +68,7 @@ struct Mechanism {
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         const auto dt = dt_timer();
         const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        constexpr float max_vel = 0.5;  // [m/s]
+        constexpr float max_vel = 1.0;  // [m/s]
         const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
         const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
         // 目標値が現在位置より上ならlock
