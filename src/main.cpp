@@ -52,10 +52,10 @@ ServoArray servo_array{140};
 Servo* const collector_servo = &servo_array[0];
 Servo* const expander_servo = &servo_array[1];
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-52.9 - 0.3 - 23.5)};
-Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(-131.5 + 1.5 - 27.8 + 1.1)};
-Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(12.7)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(13.6 - 0.5 - 1.1)};
+Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-75.4)};
+Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(-156.9)};
+Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(12.4)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(12.3)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
