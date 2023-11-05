@@ -247,7 +247,7 @@ struct Mechanism {
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 7700;
+    static constexpr int enc_interval = -9500;
     static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task(ArmAngle* ang) {
@@ -278,7 +278,7 @@ struct Mechanism {
         pid.set_target(new_tag_length);
         pid.update(present_length, dt);
         const float angle = ang->get_angle();
-        const float anti_gravity = std::isnan(angle) ? 0 : 0.05 * std::sin(angle);
+        const float anti_gravity = std::isnan(angle) ? 0 : 0.06 * std::sin(angle);
         fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
         printf("%1d ", !lim->read());
