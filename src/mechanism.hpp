@@ -192,11 +192,11 @@ struct Mechanism {
         }
       } else if(state == Running) {
         if(!lim->read()) origin = enc->get_enc() - bottom_deg * deg2enc;
-        auto present_rad = (enc->get_enc() - origin) * enc_to_rad;
+        const float present_rad = (enc->get_enc() - origin) * enc_to_rad;
         const auto dt = dt_timer();
         constexpr float max_omega = 1.5f;  // [rad/sec]
-        auto max = max_omega * chrono::duration<float>{dt}.count();
-        float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
+        const float max = max_omega * chrono::duration<float>{dt}.count();
+        const float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
         float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
         constexpr float max_distance = M_PI / 4;
         new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
@@ -273,7 +273,7 @@ struct Mechanism {
         auto dt = dt_timer();
         const float max = max_vel * std::chrono::duration<float>{dt}.count();
         const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
+        const float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
         pid.set_target(new_tag_length);
         pid.update(present_length, dt);
         const float angle = ang->get_angle();
