@@ -46,11 +46,11 @@ class SteerUnitController {
 
     if(forward_cost < backward_cost) {
       steer_controller_.set_tgt_direction(tgt_dir);
-      drive_controller_.set_target(tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(tgt_vel_.length() * ang_error_ / wheel_radius_);
       last_tgt_dir_ = tgt_dir;
     } else {
       steer_controller_.set_tgt_direction(tgt_backward_dir);
-      drive_controller_.set_target(-tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(-tgt_vel_.length() * ang_error_ / wheel_radius_);
       last_tgt_dir_ = tgt_backward_dir;
     }
 
@@ -111,6 +111,7 @@ class SteerUnitController {
   Vec2 tgt_vel_;
   Vec2 odom_vel_;
   Direction last_tgt_dir_;
+  float ang_error_ = 1;
 };
 
 #endif
