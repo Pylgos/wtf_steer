@@ -22,7 +22,12 @@ class Steer4WController {
 
   void update(std::array<float, 4> present_drive_ang_vels, std::array<Angle, 4> present_steer_angles,
               std::chrono::nanoseconds dt) {
+    float errors = 1.0f;
     for(size_t i = 0; i < units_.size(); i++) {
+      errors *= units_[i].get_angle_error(present_drive_ang_vels[i], present_steer_angles[i] - offset_[i]);
+    }
+    for(size_t i = 0; i < units_.size(); i++) {
+      units_[i].set_error(std::sqrt(errors));
       units_[i].update(present_drive_ang_vels[i], present_steer_angles[i] - offset_[i], dt);
     }
 
