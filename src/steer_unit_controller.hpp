@@ -46,16 +46,37 @@ class SteerUnitController {
 
     if(forward_cost < backward_cost) {
       steer_controller_.set_tgt_direction(tgt_dir);
-      drive_controller_.set_target(tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(tgt_vel_.length() * ang_error_ / wheel_radius_);
       last_tgt_dir_ = tgt_dir;
     } else {
       steer_controller_.set_tgt_direction(tgt_backward_dir);
-      drive_controller_.set_target(-tgt_vel_.length() / wheel_radius_);
+      drive_controller_.set_target(-tgt_vel_.length() * ang_error_ / wheel_radius_);
       last_tgt_dir_ = tgt_backward_dir;
     }
 
     steer_controller_.update(present_steer_angle, dt);
     drive_controller_.update(present_drive_ang_vel, dt);
+  }
+
+  Direction calc_tgt_dir(float present_drive_ang_vel, Angle present_steer_angle) const {
+    Direction tgt_dir = Direction::from_xy(tgt_vel_.x, tgt_vel_.y);
+    Direction tgt_backward_dir = tgt_dir + Angle::half_turn();
+    Angle tgt_angle = present_steer_angle.closest_angle_of(tgt_dir);
+    Angle tgt_backward_angle = present_steer_angle.closest_angle_of(tgt_backward_dir);
+
+    Angle velocity_cost = Angle::from_rad(std::min((float)M_PI / 4, odom_vel_.length() * 1.0f));
+    Angle forward_cost =
+        (tgt_angle - present_steer_angle).abs() + (present_drive_ang_vel < 0 ? velocity_cost : Angle::zero());
+    Angle backward_cost =
+        (tgt_backward_angle - present_steer_angle).abs() + (present_drive_ang_vel > 0 ? velocity_cost : Angle::zero());
+
+    return forward_cost < backward_cost ? tgt_dir : tgt_backward_dir;
+  }
+
+  float get_angle_error(float present_drive_ang_vel, Angle present_steer_angle) const {
+    Direction tgt_dir = calc_tgt_dir(present_drive_ang_vel, present_steer_angle);
+    Angle ang = present_steer_angle - present_steer_angle.closest_angle_of(tgt_dir);
+    return std::abs(std::cos(ang.rad()));
   }
 
   void start_unwinding() {
@@ -95,6 +116,10 @@ class SteerUnitController {
     drive_controller_.set_gain(gain);
   }
 
+  void set_error(const float error) {
+    ang_error_ = error;
+  }
+
   void reset() {
     steer_controller_.reset();
     drive_controller_.reset();
@@ -111,6 +136,7 @@ class SteerUnitController {
   Vec2 tgt_vel_;
   Vec2 odom_vel_;
   Direction last_tgt_dir_;
+  float ang_error_ = 1;
 };
 
 #endif
