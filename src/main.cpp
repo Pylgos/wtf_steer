@@ -9,6 +9,7 @@
 #include <mechanism.hpp>
 #include <pid_controller.hpp>
 #include <rs485.hpp>
+#include <servo.hpp>
 #include <steer_4w_controller.hpp>
 #include <steer_angle_controller.hpp>
 #include <steer_unit_controller.hpp>
@@ -18,9 +19,9 @@ using namespace anglelib;
 using namespace vmath;
 
 
-static constexpr chrono::microseconds loop_period = 1ms;
+static constexpr auto loop_period = 10ms;
 static constexpr float drive_motor_gear_ratio = 1.0 / 19.0;
-static constexpr float wheel_radius = 0.05;
+static constexpr float wheel_radius = 0.05 / 0.853 * (9500.0 / 10987);
 
 
 BufferedSerial pc{USBTX, USBRX, 115200};
@@ -32,25 +33,29 @@ DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12,
 
 C620Array c620_array;
 C620* const front_left_drive_motor = &c620_array[2];
-C620* const rear_left_drive_motor = &c620_array[3];
+C620* const rear_left_drive_motor = &c620_array[1];
 C620* const rear_right_drive_motor = &c620_array[0];
-C620* const front_right_drive_motor = &c620_array[1];
+C620* const front_right_drive_motor = &c620_array[3];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
-FirstPenguinArray first_penguin_array{40};
-FirstPenguinArray fp_mech[] = {{30}, {35}};
-FirstPenguin* const front_left_steer_motor = &first_penguin_array[2];
+FirstPenguinArray first_penguin_array{30};
+FirstPenguinArray fp_mech[] = {{35}, {40}};
+FirstPenguin* const front_left_steer_motor = &first_penguin_array[0];
 FirstPenguin* const rear_left_steer_motor = &first_penguin_array[1];
-FirstPenguin* const rear_right_steer_motor = &first_penguin_array[0];
+FirstPenguin* const rear_right_steer_motor = &first_penguin_array[2];
 FirstPenguin* const front_right_steer_motor = &first_penguin_array[3];
 const std::array<FirstPenguin*, 4> steer_motors = {
     front_left_steer_motor, rear_left_steer_motor, rear_right_steer_motor, front_right_steer_motor};
 
-Amt21 front_left_steer_enc{&rs485, 0x58, -0.5, Anglef::from_deg(-1.2 - 1.8 + 0.9)};
-Amt21 rear_left_steer_enc{&rs485, 0x50, -0.5, Anglef::from_deg(70.8 + 1.3 + 0.7 - 4.8 + 2.5 - 1.0)};
-Amt21 rear_right_steer_enc{&rs485, 0x54, -0.5, Anglef::from_deg(26.4)};
-Amt21 front_right_steer_enc{&rs485, 0x5C, -0.5, Anglef::from_deg(3.3 + 0.4)};
+ServoArray servo_array{140};
+Servo* const collector_servo = &servo_array[0];
+Servo* const expander_servo = &servo_array[1];
+
+Amt21 front_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-75.4)};
+Amt21 rear_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(-156.9)};
+Amt21 rear_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(12.4 + 68.5)};
+Amt21 front_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(12.3)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -75,7 +80,7 @@ void flush_can_buffer() {
 
 Controller controller{can_push};
 
-Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201, 0.201)};
+Steer4WController steer_controller{PidGain{}, PidGain{}, wheel_radius, Vec2f(0.201 * 1.164059254, 0.201 * 1.164059254)};
 
 bool try_init_can() {
   bool both_initilized = true;
@@ -112,8 +117,10 @@ void write_can() {
 
   if(can1.isOpened()) {
     const auto fp_msg = first_penguin_array.to_msg();
-    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg()) || !can1.write(fp_mech[1].to_msg())) {
+    if(!can1.write(fp_msg) || !can1.write(fp_mech[0].to_msg())) {
       printf("failed to write first penguin msg\n");
+    } else if(!can1.write(servo_array.to_msg())) {
+      printf("failed to write servo msg\n");
     }
   }
 
@@ -132,8 +139,8 @@ void read_can() {
 
   while(can_read_buffer.pop(msg)) {
     controller.parse_packet(msg, timer.elapsed_time());
+    first_penguin_array.parse_packet(msg);
     fp_mech[0].parse_packet(msg);
-    fp_mech[1].parse_packet(msg);
   }
 
   if(can2.isOpened()) {
@@ -147,7 +154,6 @@ int update_steer_encoders() {
   int error_count = 0;
   for(auto& enc: steer_encoders) {
     if(!enc->update_pos()) {
-      printf("failed to update steer encoder\n");
       error_count++;
     }
     wait_us(10);
@@ -156,11 +162,11 @@ int update_steer_encoders() {
 }
 
 Mechanism mech = {
-    .donfan = {.fp = &fp_mech[1][1], .lim_fwd = &limit_sw[7], .lim_rev = &limit_sw[6]},
-    .expander = {.fp = &fp_mech[0][3], .lim = &limit_sw[9], .lim_top = &limit_sw[5]},
-    .collector = {.fp = &fp_mech[1][0], .lim = &limit_sw[2]},
-    .arm_angle = {.c620 = &c620_array[4], .fp = &fp_mech[1][0], .lim = &limit_sw[3]},
-    .arm_length = {.fp = &fp_mech[0][2], .lim = &limit_sw[8]},
+    .donfan = {.fp = &fp_mech[0][1], .lim_fwd = &limit_sw[1], .lim_rev = &limit_sw[2]},
+    .expander = {.fp = &fp_mech[0][0], .enc = &first_penguin_array[2], .lim = &limit_sw[7], .servo = expander_servo},
+    .collector = {.fp = &fp_mech[0][3], .lim = &limit_sw[3], .servo = collector_servo},
+    .arm_angle = {.c620 = &c620_array[4], .enc = &first_penguin_array[1], .lim = &limit_sw[5]},
+    .arm_length = {.fp = &fp_mech[0][2], .enc = &first_penguin_array[0], .lim = &limit_sw[6]},
     .large_wheel = {.c620_arr = {&c620_array[5], &c620_array[6]}},
 };
 
@@ -201,9 +207,12 @@ int main() {
     steer_controller.start_unwinding();
   });
 
+  controller.on_wall_align_assist([](uint16_t distance) {
+    printf("wall assist % 4d\n", distance);
+  });
   controller.on_donfan([](int8_t dir) {
     printf("donfan % 2d\n", dir);
-    mech.donfan.dir = dir;
+    mech.donfan.set_dir(dir);
   });
   controller.on_expander([](int16_t height) {
     mech.expander.set_target(height);
@@ -247,17 +256,16 @@ int main() {
 
   Timer dt_timer;
   dt_timer.start();
-  ThisThread::sleep_for(chrono::duration_cast<Kernel::Clock::duration_u32>(loop_period));
-
-  // controller.activate();
+  ThisThread::sleep_for(loop_period);
 
   while(true) {
     std::chrono::microseconds dt = dt_timer.elapsed_time();
     dt_timer.reset();
 
     read_can();
-    int error_count = update_steer_encoders();
+    [[maybe_unused]] int error_count = update_steer_encoders();
     if(error_count > 0) {
+      printf("failed to update steer encoder %d\n", error_count);
       continue;
     }
     controller.update(timer.elapsed_time());
@@ -280,7 +288,7 @@ int main() {
 
         auto now = HighResClock::now();
         if(now - last_c620 > 100ms) {
-          printf("detect emergency.");
+          printf("OMG!");
           steer_controller.reset();
         } else {
           steer_controller.update({drive_motors[0]->get_ang_vel(), drive_motors[1]->get_ang_vel(),
@@ -297,13 +305,26 @@ int main() {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
-        for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
 
-        controller.set_odom(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
+        controller.set_vel(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
+        printf("pos:");
+        printf("% 5d ", int(steer_controller.get_odom_linear_pose().x * 1e3));
+        printf("% 5d ", int(steer_controller.get_odom_linear_pose().y * 1e3));
+        printf("% 5d ", int(steer_controller.get_odom_ang_pose() * 1e3));
+        controller.set_pose(steer_controller.get_odom_linear_pose(), steer_controller.get_odom_ang_pose());
       } break;
     }
 
     mech.task();
+    // printf("st:");
+    // for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
+    // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
+    // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
+    // printf("enc:");
+    // for(auto& e: first_penguin_array) printf("% 6ld ", e.get_enc());
+    // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
+    // printf("lim:");
+    // for(size_t i = 0; i < size(limit_sw); ++i) printf("%d ", limit_sw[i].read() * (i + 1));
     write_can();
     printf("\n");
 

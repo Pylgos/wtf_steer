@@ -3,10 +3,12 @@
 
 #include <mbed.h>
 
+#include <AwaitInterval.hpp>
 #include <c620.hpp>
 #include <first_penguin.hpp>
 #include <optional>
 #include <pid_controller.hpp>
+#include <servo.hpp>
 
 struct Mechanism {
   void set_arm_angle_gain(PidGain gain) {
@@ -22,103 +24,115 @@ struct Mechanism {
   struct Donfan {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
-      printf("don:%d ", lim[1] << 1 | lim[0]);
-      if(dir == 1 && !lim[0]) {
-        fp->set_raw_duty(8000);
-      } else if(dir == -1 && !lim[1]) {
+      printf("d:%d ", lim[1] << 1 | lim[0]);
+      if(dir_ == 1 && !lim[0] && !timeout(2s)) {
         fp->set_raw_duty(-8000);
+      } else if(dir_ == -1 && !lim[1] && !timeout(2s)) {
+        fp->set_raw_duty(8000);
       } else {
         fp->set_raw_duty(0);
       }
     }
+    void set_dir(uint8_t dir) {
+      dir_ = dir;
+      timeout.reset();
+    }
     FirstPenguin* fp;
     DigitalIn* lim_fwd;
     DigitalIn* lim_rev;
-    int8_t dir = 0;
+    int8_t dir_ = 0;
+    AwaitInterval<> timeout;
   };
   struct Expander {
-    static constexpr int enc_interval = -1474;
+    static constexpr int enc_interval = -103000;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
         set_origin();
+        set_lock(false);
         fp->set_raw_duty(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target)) {
         // キャリブレーション
-        auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 1500ms) {
+        if(!calibrate_timeout.await(1500ms)) {
           printf("exp:calibrate ");
-          fp->set_raw_duty(15000);
+          wait_lock_and(false, [&] {
+            fp->set_raw_duty(10000);
+          });
         } else {
           printf("exp:calibrate stop ");
           enter_running();
         }
       } else if(state == Running) {
         if(!lim->read()) set_origin();
-        if(!lim_top->read() && std::abs(fp->get_enc() - origin) > 1000) set_top();
-        auto now = HighResClock::now();
-        float present_length = (fp->get_enc() - origin) * normalization;
-        // ローパスフィルタ
-        float previous_tgt = pid.get_target();
-        if(std::isnan(previous_tgt)) previous_tgt = present_length;
-        previous_tgt += (target - previous_tgt) / 2;
-        pid.set_target(previous_tgt);
-        pid.update(present_length, now - pre);
-        fp->set_duty(-pid.get_output());
-        pre = now;
+        float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
+        const auto dt = dt_timer();
+        const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+        constexpr float max_vel = 1.0;  // [m/s]
+        const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
+        const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
+        // 目標値が現在位置より上ならlock
+        const bool is_lock = target - present_length > 0;
+        wait_lock_and(is_lock, [&] {
+          pid.set_target(new_tgt);
+          pid.update(present_length, dt);
+          constexpr float anti_gravity = 0.03;
+          fp->set_duty(-anti_gravity - pid.get_output());
+        });
         printf("exp:");
-        printf("%1d ", !lim_top->read() << 1 | !lim->read());
-        printf("% 6ld ", fp->get_enc() - origin);
+        printf("%1d ", is_lock << 1 | !lim->read());
+        printf("% 6ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
       }
     }
+    void set_lock(bool is_lock) {
+      servo->set_deg(is_lock ? 90 : 0);
+    }
     void set_target(int16_t height) {
       if(height >= 0) {
-        target = height / 1000.0f;
+        if(target > height / 900.0f) lock_wait.stop();
+        target = height / 900.0f;
       } else {
         // キャリブレーション
+        lock_wait.stop();
         target = 0;
-        top = std::nullopt;
         state = Waiting;
       }
     }
     void enter_running() {
-      calibrate_start = std::nullopt;
-      origin = fp->get_enc();
+      calibrate_timeout.stop();
+      lock_wait.stop();
+      origin = enc->get_enc();
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
+      dt_timer.reset();
     }
     void set_origin() {
-      origin = fp->get_enc();
-      if(top) {
-        normalization = 1.0f / (*top - origin);
-      } else {
-        normalization = 1.0f / enc_interval;
+      origin = enc->get_enc();
+    }
+    template<class F>
+    void wait_lock_and(bool lock, F f) {
+      set_lock(lock);
+      if(lock_wait.elapsed(500ms)) {
+        f();
       }
     }
-    void set_top() {
-      top = fp->get_enc();
-      normalization = 1.0f / (*top - origin);
-    }
     FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
-    DigitalIn* lim_top;
+    Servo* servo;
     enum {
       Waiting,
       Running,
     } state = Waiting;
     float target = NAN;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    AwaitInterval<> dt_timer{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
+    AwaitInterval<> lock_wait{std::nullopt};
     int32_t origin = 0;
-    std::optional<int32_t> top = std::nullopt;
-    float normalization = 1.0f / enc_interval;
   };
   struct Collector {
     void task() {
@@ -130,19 +144,24 @@ struct Mechanism {
         state = Storing;
         collecting = false;
       }
-
+      printf("c%d ", state);
       switch(state) {
-        case Stop:
+        case Stop: {
+          servo->set_deg(45);
           fp->set_raw_duty(0);
           break;
-        case Running:
+        }
         case Storing:
-          fp->set_raw_duty(-8000);
+        case Running: {
+          servo->set_deg(90);
+          fp->set_raw_duty(8000);
           break;
+        }
       }
     }
     FirstPenguin* fp;
     DigitalIn* lim;
+    Servo* servo;
     enum {
       Stop,
       Running,
@@ -151,9 +170,10 @@ struct Mechanism {
     bool collecting = false;
   };
   struct ArmAngle {
+    static constexpr int top_deg = 123;
+    static constexpr int bottom_deg = -25;
     static constexpr int enc_interval = 3800;
-    static constexpr int deg2enc = enc_interval / (100 - -60);
-    // -60deg -> 100deg
+    static constexpr int deg2enc = enc_interval / (top_deg - bottom_deg);
     static constexpr float enc_to_rad = M_PI / enc_interval;
     static constexpr float enc_to_mrad = enc_to_rad * 1000;
     void task() {
@@ -162,35 +182,32 @@ struct Mechanism {
         c620->set_raw_tgt_current(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target_angle)) {
-        const auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 3s) {
+        if(!calibrate_timeout.await(3s)) {
           // キャリブレーション
           printf("ang:calibrate ");
-          c620->set_raw_tgt_current(2000);
+          c620->set_raw_tgt_current(-2000);
         } else {
           // 3s リミット踏めなかったらそこを原点にする
           printf("ang:stop calibrate ");
           enter_running();
         }
       } else if(state == Running) {
-        auto now = HighResClock::now();
-        if(!lim->read()) origin = fp->get_enc() + 60 * deg2enc;
-        auto present_rad = (fp->get_enc() - origin) * enc_to_rad;
+        if(!lim->read()) origin = enc->get_enc() - bottom_deg * deg2enc;
+        const float present_rad = (enc->get_enc() - origin) * enc_to_rad;
+        const auto dt = dt_timer();
         constexpr float max_omega = 1.5f;  // [rad/sec]
-        auto max = max_omega * chrono::duration<float>{now - pre}.count();
-        float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
+        const float max = max_omega * chrono::duration<float>{dt}.count();
+        const float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
         float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
         constexpr float max_distance = M_PI / 4;
         new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
         pid.set_target(new_tag_angle);
-        pid.update(present_rad, now - pre);
+        pid.update(present_rad, dt);
         float anti_gravity = 1500 * std::cos(present_rad);
-        c620->set_raw_tgt_current(-std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
-        pre = now;
+        c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         printf("ang:");
         printf("%1d ", !lim->read());
-        printf("%6ld ", fp->get_enc() - origin);
+        printf("%6ld ", enc->get_enc() - origin);
         printf("% 4.2f ", present_rad);
         printf("% 4.2f ", target_angle);
         printf("% 4.2f ", new_tag_angle);
@@ -198,56 +215,49 @@ struct Mechanism {
       }
     }
     void set_target(int16_t angle) {
-      if(angle >= -M_PI / 3 * 1e3) {
+      if(angle >= bottom_deg * deg2enc * enc_to_mrad) {
         target_angle = angle * 1e-3;
       } else {
-        target_angle = -60 * deg2enc;
+        target_angle = bottom_deg * deg2enc;
         state = Waiting;
       }
     }
-    bool is_top() const {
-      auto present = (fp->get_enc() - origin);
-      bool top = 75 * deg2enc < present && present < 105 * deg2enc;
-      return state == Running && top;
-    }
-    bool is_up() const {
-      return state == Running && (fp->get_enc() - origin) * enc_to_rad > M_PI / 6;
-    }
     void enter_running() {
-      origin = fp->get_enc() + 60 * deg2enc;
+      origin = enc->get_enc() - bottom_deg * deg2enc;
       c620->set_raw_tgt_current(0);
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
-      calibrate_start = std::nullopt;
+      dt_timer.reset();
+      calibrate_timeout.stop();
+    }
+    float get_angle() const {
+      return state == Running ? (enc->get_enc() - origin) * enc_to_rad : NAN;
     }
     C620* c620;
-    FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
     enum {
       Waiting,
       Running,
     } state = Waiting;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    AwaitInterval<> dt_timer{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_angle = NAN;
     int32_t origin = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = 2680;
-    static constexpr int max_length = 900;
+    static constexpr int enc_interval = -9500;
+    static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
-    void task() {
+    void task(ArmAngle* ang) {
       // リミットスイッチが押されたら原点を初期化
       if(state == Waiting && !lim->read()) {
         printf("len:stop ");
         fp->set_raw_duty(0);
         enter_running();
       } else if(state == Waiting && !std::isnan(target_length)) {
-        auto now = HighResClock::now();
-        if(!calibrate_start) calibrate_start = now;
-        if(now - *calibrate_start < 1500ms) {
+        if(!calibrate_timeout.await(1500ms)) {
           // キャリブレーション
           printf("len:calibrate ");
           fp->set_raw_duty(-15000);
@@ -258,21 +268,21 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        auto now = HighResClock::now();
-        if(!lim->read()) origin = fp->get_enc();
-        const float present_length = (fp->get_enc() - origin) * enc_to_m;
+        if(!lim->read()) origin = enc->get_enc();
+        const float present_length = (enc->get_enc() - origin) * enc_to_m;
         constexpr float max_vel = 1200 * 1e-3;  // [m/s]
-        std::chrono::duration<float> dt = now - pre;
-        const float max = max_vel * dt.count();
+        auto dt = dt_timer();
+        const float max = max_vel * std::chrono::duration<float>{dt}.count();
         const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
+        const float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
         pid.set_target(new_tag_length);
-        pid.update(present_length, now - pre);
-        fp->set_duty(pid.get_output());
-        pre = now;
+        pid.update(present_length, dt);
+        const float angle = ang->get_angle();
+        const float anti_gravity = std::isnan(angle) ? 0 : 0.06 * std::sin(angle);
+        fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
         printf("%1d ", !lim->read());
-        printf("%4ld ", fp->get_enc() - origin);
+        printf("%4ld ", enc->get_enc() - origin);
         printf("%4d ", (int)(present_length * 1e3));
         printf("%4d ", (int)(new_tag_length * 1e3));
         printf("%6d\t", fp->get_raw_duty());
@@ -287,29 +297,32 @@ struct Mechanism {
       }
     }
     void enter_running() {
-      calibrate_start = std::nullopt;
-      origin = fp->get_enc();
+      calibrate_timeout.stop();
+      origin = enc->get_enc();
       state = Running;
       pid.reset();
-      pre = HighResClock::now();
+      dt_timer.reset();
     }
     FirstPenguin* fp;
+    const FirstPenguin* enc;
     DigitalIn* lim;
     enum {
       Waiting,
       Running,
     } state = Waiting;
     PidController pid = {PidGain{}};
-    decltype(HighResClock::now()) pre = {};
-    std::optional<decltype(HighResClock::now())> calibrate_start = std::nullopt;
+    AwaitInterval<> dt_timer{};
+    AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_length = NAN;
     int32_t origin = 0;
   };
   struct LargeWheel {
     void task() {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
-      c620_arr[0]->set_raw_tgt_current(duty);
-      c620_arr[1]->set_raw_tgt_current(-duty);
+      c620_arr[0]->set_raw_tgt_current(-std::clamp((int)duty, -16384, 16384));
+      c620_arr[1]->set_raw_tgt_current(std::clamp((int)duty, -16384, 16384));
+      printf("l:");
+      for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
     }
     C620* c620_arr[2];
     int16_t tag_duty = 0;
@@ -321,7 +334,7 @@ struct Mechanism {
     expander.task();
     collector.task();
     arm_angle.task();
-    arm_length.task();
+    arm_length.task(&arm_angle);
     large_wheel.task();
   }
 

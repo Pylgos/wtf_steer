@@ -1,6 +1,5 @@
 #!/bin/bash
-set -euxo pipefail
+set -euo pipefail
 cd "${BASH_SOURCE[0]%/*}"/..
 PC=robotclub@robotclub-latitude.local
-ssh -t "$PC" \
-  watch -n30 acpi
+ssh -t "$PC" canbusload can0@1000000

@@ -7,4 +7,5 @@ BIN=$(pwd)/.pio/build/nucleo_f446re/firmware.bin
 DST=/run/media/robotclub/NOD_F446RE/
 $PIO run
 
-scp "$BIN" robotclub@robotclub-latitude.local:"$DST"
+PC=robotclub@robotclub-latitude.local
+scp "$BIN" "$PC":"$DST"
