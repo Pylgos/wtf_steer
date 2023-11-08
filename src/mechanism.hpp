@@ -10,6 +10,15 @@
 #include <pid_controller.hpp>
 #include <servo.hpp>
 
+namespace {
+constexpr float deg_to_rad(const int degree) {
+  return degree * 2 * M_PI / 360;
+}
+constexpr float rad_to_deg(const float radian) {
+  return radian * 360 / (2 * M_PI);
+}
+}  // namespace
+
 struct Mechanism {
   void set_arm_angle_gain(PidGain gain) {
     arm_angle.pid.set_gain(gain);
@@ -170,11 +179,12 @@ struct Mechanism {
     bool collecting = false;
   };
   struct ArmAngle {
-    static constexpr int top_deg = 123;
-    static constexpr int bottom_deg = -25;
-    static constexpr int enc_interval = 3800;
+    static constexpr int top_deg = 120;
+    static constexpr int bottom_deg = -35;
+    static constexpr float bottom_rad = deg_to_rad(bottom_deg);
+    static constexpr int enc_interval = 4000;
     static constexpr int deg2enc = enc_interval / (top_deg - bottom_deg);
-    static constexpr float enc_to_rad = M_PI / enc_interval;
+    static constexpr float enc_to_rad = deg_to_rad(top_deg - bottom_deg) / enc_interval;
     static constexpr float enc_to_mrad = enc_to_rad * 1000;
     void task() {
       if(state == Waiting && !lim->read()) {
@@ -192,8 +202,8 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        if(!lim->read()) origin = enc->get_enc() - bottom_deg * deg2enc;
-        const float present_rad = (enc->get_enc() - origin) * enc_to_rad;
+        if(!lim->read()) origin = enc->get_enc();
+        const float present_rad = (enc->get_enc() - origin) * enc_to_rad + bottom_rad;
         const auto dt = dt_timer();
         constexpr float max_omega = 1.5f;  // [rad/sec]
         const float max = max_omega * chrono::duration<float>{dt}.count();
@@ -208,22 +218,22 @@ struct Mechanism {
         printf("ang:");
         printf("%1d ", !lim->read());
         printf("%6ld ", enc->get_enc() - origin);
-        printf("% 4.2f ", present_rad);
-        printf("% 4.2f ", target_angle);
-        printf("% 4.2f ", new_tag_angle);
+        printf("% 4.0f ", rad_to_deg(present_rad));
+        printf("% 4.0f ", rad_to_deg(target_angle));
+        printf("% 4.0f ", rad_to_deg(new_tag_angle));
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
     void set_target(int16_t angle) {
-      if(angle >= bottom_deg * deg2enc * enc_to_mrad) {
+      if(angle * 1e-3 >= bottom_rad) {
         target_angle = angle * 1e-3;
       } else {
-        target_angle = bottom_deg * deg2enc;
+        target_angle = bottom_rad;
         state = Waiting;
       }
     }
     void enter_running() {
-      origin = enc->get_enc() - bottom_deg * deg2enc;
+      origin = enc->get_enc();
       c620->set_raw_tgt_current(0);
       state = Running;
       pid.reset();
@@ -231,7 +241,8 @@ struct Mechanism {
       calibrate_timeout.stop();
     }
     float get_angle() const {
-      return state == Running ? (enc->get_enc() - origin) * enc_to_rad : NAN;
+      if(state != Running) return NAN;
+      return (enc->get_enc() - origin) * enc_to_rad + bottom_rad;
     }
     C620* c620;
     const FirstPenguin* enc;
