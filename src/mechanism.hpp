@@ -203,7 +203,14 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        const bool l_pushed = !lim->read();
+        if(!lim->read()) {
+          ++count;
+          if(count > 3) count = 3;
+        } else {
+          --count;
+          if(count < 0) count = 0;
+        }
+        const bool l_pushed = count == 3;
         if(l_pushed) origin = enc->get_enc();
         const float present_rad = (enc->get_enc() - origin) * enc_to_rad + bottom_rad;
         const auto dt = dt_timer();
@@ -258,6 +265,7 @@ struct Mechanism {
     AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_angle = NAN;
     int32_t origin = 0;
+    int count = 0;
   };
   struct ArmLength {
     static constexpr int enc_interval = -9500;
