@@ -86,7 +86,7 @@ struct Mechanism {
         wait_lock_and(is_lock, [&] {
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
-          constexpr float anti_gravity = 0.055;
+          constexpr float anti_gravity = 0.0275;
           fp->set_duty(-anti_gravity - pid.get_output());
         });
         printf("exp:");
@@ -292,7 +292,7 @@ struct Mechanism {
         pid.set_target(new_tag_length);
         pid.update(present_length, dt);
         const float angle = ang->get_angle();
-        const float anti_gravity = std::isnan(angle) ? 0 : 0.06 * std::sin(angle);
+        const float anti_gravity = std::isnan(angle) ? 0 : 0.03 * std::sin(angle);
         fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
         printf("%1d ", l_pushed);
