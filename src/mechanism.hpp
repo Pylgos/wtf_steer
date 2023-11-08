@@ -53,7 +53,7 @@ struct Mechanism {
     AwaitInterval<> timeout;
   };
   struct Expander {
-    static constexpr int enc_interval = -103000;
+    static constexpr int enc_interval = -102500;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
@@ -85,7 +85,7 @@ struct Mechanism {
         wait_lock_and(is_lock, [&] {
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
-          constexpr float anti_gravity = 0.03;
+          constexpr float anti_gravity = 0.055;
           fp->set_duty(-anti_gravity - pid.get_output());
         });
         printf("exp:");
