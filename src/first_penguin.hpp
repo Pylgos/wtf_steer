@@ -22,10 +22,10 @@ class FirstPenguin {
   }
 
   void set_duty(const float duty) {
-    raw_duty_ = std::clamp(duty, -1.0f, 1.0f) * 16384 * scale_;
+    raw_duty_ = std::clamp(duty, -1.0f, 1.0f) * 32000 * scale_;
   }
   float get_duty() const {
-    return raw_duty_ * (1.0f / 16384.0f) / scale_;
+    return raw_duty_ * (1.0f / 32000.0f) / scale_;
   }
 
   void parse_packet(const uint8_t data[8]) {

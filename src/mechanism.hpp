@@ -53,7 +53,7 @@ struct Mechanism {
     AwaitInterval<> timeout;
   };
   struct Expander {
-    static constexpr int enc_interval = -103000;
+    static constexpr int enc_interval = -102500;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
@@ -73,7 +73,8 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        if(!lim->read()) set_origin();
+        const bool l_pushed = !lim->read();
+        if(l_pushed) set_origin();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         const auto dt = dt_timer();
         const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
@@ -85,11 +86,11 @@ struct Mechanism {
         wait_lock_and(is_lock, [&] {
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
-          constexpr float anti_gravity = 0.03;
+          constexpr float anti_gravity = 0.0275;
           fp->set_duty(-anti_gravity - pid.get_output());
         });
         printf("exp:");
-        printf("%1d ", is_lock << 1 | !lim->read());
+        printf("%1d ", is_lock << 1 | l_pushed);
         printf("% 6ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
@@ -162,7 +163,7 @@ struct Mechanism {
         }
         case Storing:
         case Running: {
-          servo->set_deg(90);
+          servo->set_deg(80);
           fp->set_raw_duty(8000);
           break;
         }
@@ -202,7 +203,15 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        if(!lim->read()) origin = enc->get_enc();
+        if(!lim->read()) {
+          ++count;
+          if(count > 3) count = 3;
+        } else {
+          --count;
+          if(count < 0) count = 0;
+        }
+        const bool l_pushed = count == 3;
+        if(l_pushed) origin = enc->get_enc();
         const float present_rad = (enc->get_enc() - origin) * enc_to_rad + bottom_rad;
         const auto dt = dt_timer();
         constexpr float max_omega = 1.5f;  // [rad/sec]
@@ -216,11 +225,11 @@ struct Mechanism {
         float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         printf("ang:");
-        printf("%1d ", !lim->read());
+        printf("%1d ", l_pushed);
         printf("%6ld ", enc->get_enc() - origin);
         printf("% 4.0f ", rad_to_deg(present_rad));
         printf("% 4.0f ", rad_to_deg(target_angle));
-        printf("% 4.0f ", rad_to_deg(new_tag_angle));
+        // printf("% 4.0f ", rad_to_deg(new_tag_angle));
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
@@ -256,6 +265,7 @@ struct Mechanism {
     AwaitInterval<> calibrate_timeout{std::nullopt};
     float target_angle = NAN;
     int32_t origin = 0;
+    int count = 0;
   };
   struct ArmLength {
     static constexpr int enc_interval = -9500;
@@ -279,7 +289,8 @@ struct Mechanism {
           enter_running();
         }
       } else if(state == Running) {
-        if(!lim->read()) origin = enc->get_enc();
+        const bool l_pushed = !lim->read();
+        if(l_pushed) origin = enc->get_enc();
         const float present_length = (enc->get_enc() - origin) * enc_to_m;
         constexpr float max_vel = 1200 * 1e-3;  // [m/s]
         auto dt = dt_timer();
@@ -289,10 +300,10 @@ struct Mechanism {
         pid.set_target(new_tag_length);
         pid.update(present_length, dt);
         const float angle = ang->get_angle();
-        const float anti_gravity = std::isnan(angle) ? 0 : 0.06 * std::sin(angle);
+        const float anti_gravity = std::isnan(angle) ? 0 : 0.03 * std::sin(angle);
         fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
-        printf("%1d ", !lim->read());
+        printf("%1d ", l_pushed);
         printf("%4ld ", enc->get_enc() - origin);
         printf("%4d ", (int)(present_length * 1e3));
         printf("%4d ", (int)(new_tag_length * 1e3));
@@ -332,7 +343,7 @@ struct Mechanism {
       duty += (tag_duty - duty) / 2;  // ローパスフィルタ
       c620_arr[0]->set_raw_tgt_current(-std::clamp((int)duty, -16384, 16384));
       c620_arr[1]->set_raw_tgt_current(std::clamp((int)duty, -16384, 16384));
-      printf("l:");
+      printf("l:% 6d ", tag_duty);
       for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
     }
     C620* c620_arr[2];
