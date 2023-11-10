@@ -3,6 +3,7 @@
 #include <anglelib.hpp>
 #include <pid_controller.hpp>
 #include <steer_angle_controller.hpp>
+#include <steer_drive_controller.hpp>
 #include <vmath.hpp>
 
 
@@ -131,7 +132,7 @@ class SteerUnitController {
 
  private:
   SteerAngleController steer_controller_;
-  PidController drive_controller_;
+  SteerDriveController drive_controller_;
   float wheel_radius_;
   Vec2 tgt_vel_;
   Vec2 odom_vel_;

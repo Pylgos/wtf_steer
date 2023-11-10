@@ -34,9 +34,14 @@ struct Mechanism {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
       printf("d:%d ", lim[1] << 1 | lim[0]);
-      if(dir_ == 1 && !lim[0] && !timeout(2s)) {
+      if((dir_ == 1 && lim[0]) || (dir_ == -1 && lim[1])) {
+        timeout.reset();
+      } else if(((dir_ == 1 && !lim[0]) || (dir_ == -1 && !lim[1])) && timeout.elapsed(2s)) {
+        dir_ = 0;
+      }
+      if(dir_ == 1 && !lim[0]) {
         fp->set_raw_duty(-8000);
-      } else if(dir_ == -1 && !lim[1] && !timeout(2s)) {
+      } else if(dir_ == -1 && !lim[1]) {
         fp->set_raw_duty(8000);
       } else {
         fp->set_raw_duty(0);
@@ -91,7 +96,7 @@ struct Mechanism {
         });
         printf("exp:");
         printf("%1d ", is_lock << 1 | l_pushed);
-        printf("% 6ld ", enc->get_enc() - origin);
+        printf("% 7ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
@@ -268,7 +273,7 @@ struct Mechanism {
     int count = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = -9500;
+    static constexpr int enc_interval = -6200;
     static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task(ArmAngle* ang) {
@@ -344,7 +349,7 @@ struct Mechanism {
       c620_arr[0]->set_raw_tgt_current(-std::clamp((int)duty, -16384, 16384));
       c620_arr[1]->set_raw_tgt_current(std::clamp((int)duty, -16384, 16384));
       printf("l:% 6d ", tag_duty);
-      for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
+      for(auto& e: c620_arr) printf("% 5.1f ", e->get_actual_current());
     }
     C620* c620_arr[2];
     int16_t tag_duty = 0;
