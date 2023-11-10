@@ -32,10 +32,10 @@ Timer timer;
 DigitalIn limit_sw[] = {PC_4, PC_5, PC_6, PC_7, PC_8, PC_9, PC_10, PC_11, PC_12, PC_13};
 
 C620Array c620_array;
-C620* const front_left_drive_motor = &c620_array[2];
+C620* const front_left_drive_motor = &c620_array[3];
 C620* const rear_left_drive_motor = &c620_array[1];
 C620* const rear_right_drive_motor = &c620_array[0];
-C620* const front_right_drive_motor = &c620_array[3];
+C620* const front_right_drive_motor = &c620_array[2];
 const std::array<C620*, 4> drive_motors = {
     front_left_drive_motor, rear_left_drive_motor, rear_right_drive_motor, front_right_drive_motor};
 
@@ -52,10 +52,10 @@ ServoArray servo_array{140};
 Servo* const collector_servo = &servo_array[0];
 Servo* const expander_servo = &servo_array[1];
 
-Amt21 front_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(156.0)};
-Amt21 rear_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-140.1)};
-Amt21 rear_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(177.7)};
-Amt21 front_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(-12.3)};
+Amt21 front_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(77.3 - 90)};
+Amt21 rear_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(19.6 + 90)};
+Amt21 rear_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(-91.5 + 270)};
+Amt21 front_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(28.6 + 90)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
