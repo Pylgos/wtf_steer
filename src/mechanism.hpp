@@ -91,7 +91,7 @@ struct Mechanism {
         });
         printf("exp:");
         printf("%1d ", is_lock << 1 | l_pushed);
-        printf("% 6ld ", enc->get_enc() - origin);
+        printf("% 7ld ", enc->get_enc() - origin);
         printf("% 5.2f ", present_length);
         printf("% 5.2f ", pid.get_target());
         printf("% 6d ", fp->get_raw_duty());
@@ -344,7 +344,7 @@ struct Mechanism {
       c620_arr[0]->set_raw_tgt_current(-std::clamp((int)duty, -16384, 16384));
       c620_arr[1]->set_raw_tgt_current(std::clamp((int)duty, -16384, 16384));
       printf("l:% 6d ", tag_duty);
-      for(auto& e: c620_arr) printf("% 4.1f ", e->get_actual_current());
+      for(auto& e: c620_arr) printf("% 5.1f ", e->get_actual_current());
     }
     C620* c620_arr[2];
     int16_t tag_duty = 0;

@@ -274,6 +274,8 @@ int main() {
       printf("% 6.1f ", steer_encoders[i]->get_angle().deg());
     }
 
+    mech.task();
+
     switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
         printf("CON ");
@@ -306,21 +308,19 @@ int main() {
           drive_motors[i]->set_tgt_torque(drive_cmd[i]);
           steer_motors[i]->set_duty(steer_cmd[i]);
         }
+        if(now - last_c620 <= 100ms) {
+          printf("dr:");
+          for(auto& e: drive_motors) printf("% 6d ", e->get_raw_tgt_current());
+        }
 
         controller.set_vel(steer_controller.get_odom_linear_vel(), steer_controller.get_odom_ang_vel());
-        printf("pos:");
-        printf("% 5d ", int(steer_controller.get_odom_linear_pose().x * 1e3));
-        printf("% 5d ", int(steer_controller.get_odom_linear_pose().y * 1e3));
-        printf("% 5d ", int(steer_controller.get_odom_ang_pose() * 1e3));
         controller.set_pose(steer_controller.get_odom_linear_pose(), steer_controller.get_odom_ang_pose());
       } break;
     }
 
-    mech.task();
     // printf("st:");
     // for(auto& e: steer_motors) printf("% 6d ", e->get_raw_duty());
     // for(auto& e: fp_mech[0]) printf("% 6d ", e.get_raw_duty());
-    // for(auto& e: c620_array) printf("% 6d ", e.get_raw_tgt_current());
     // printf("enc:");
     // for(auto& e: first_penguin_array) printf("% 6ld ", e.get_enc());
     // for(auto& e: fp_mech[0]) printf("% 6ld ", e.get_enc());
