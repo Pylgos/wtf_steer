@@ -34,9 +34,14 @@ struct Mechanism {
     void task() {
       bool lim[2] = {!lim_fwd->read(), !lim_rev->read()};
       printf("d:%d ", lim[1] << 1 | lim[0]);
-      if(dir_ == 1 && !lim[0] && !timeout(2s)) {
+      if((dir_ == 1 && lim[0]) || (dir_ == -1 && lim[1])) {
+        timeout.reset();
+      } else if(((dir_ == 1 && !lim[0]) || (dir_ == -1 && !lim[1])) && timeout.elapsed(2s)) {
+        dir_ = 0;
+      }
+      if(dir_ == 1 && !lim[0]) {
         fp->set_raw_duty(-8000);
-      } else if(dir_ == -1 && !lim[1] && !timeout(2s)) {
+      } else if(dir_ == -1 && !lim[1]) {
         fp->set_raw_duty(8000);
       } else {
         fp->set_raw_duty(0);
