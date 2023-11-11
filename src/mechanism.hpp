@@ -309,10 +309,10 @@ struct Mechanism {
         fp->set_duty(pid.get_output() + anti_gravity);
         printf("len:");
         printf("%1d ", l_pushed);
-        printf("%4ld ", enc->get_enc() - origin);
+        printf("%5ld ", enc->get_enc() - origin);
         printf("%4d ", (int)(present_length * 1e3));
-        printf("%4d ", (int)(new_tag_length * 1e3));
-        printf("%6d\t", fp->get_raw_duty());
+        printf("%4d ", (int)(target_length * 1e3));
+        printf("%6d ", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {
@@ -358,8 +358,8 @@ struct Mechanism {
 
   void task() {
     donfan.task();
-    expander.task();
     collector.task();
+    expander.task();
     arm_angle.task();
     arm_length.task(&arm_angle);
     large_wheel.task();

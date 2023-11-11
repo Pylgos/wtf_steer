@@ -223,11 +223,11 @@ int main() {
     mech.collector.collecting = collect;
   });
   controller.on_arm_angle([](int16_t angle) {
-    printf("arm_angle % 5d (% 4d)\n", angle, int(angle * 360 / (2e3 * M_PI)));
+    // printf("arm_angle % 5d (% 4d)\n", angle, int(angle * 360 / (2e3 * M_PI)));
     mech.arm_angle.set_target(angle);
   });
   controller.on_arm_length([](int16_t length) {
-    printf("arm_length %d\n", length);
+    // printf("arm_length %d\n", length);
     mech.arm_length.set_target(length);
   });
   controller.on_large_wheel([](int16_t duty) {
