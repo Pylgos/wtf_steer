@@ -278,7 +278,12 @@ int main() {
 
     switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
-        printf("CON ");
+        auto now = HighResClock::now();
+        if(now - last_c620 > 100ms) {
+          printf("EMG ");
+        } else {
+          printf("CON ");
+        }
         steer_controller.reset();
         for(size_t i = 0; i < 4; i++) {
           drive_motors[i]->set_tgt_torque(0);
