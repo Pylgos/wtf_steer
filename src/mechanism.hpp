@@ -58,7 +58,7 @@ struct Mechanism {
     AwaitInterval<> timeout;
   };
   struct Expander {
-    static constexpr int enc_interval = -102500;
+    static constexpr int enc_interval = -101800;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
