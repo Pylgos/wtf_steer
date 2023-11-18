@@ -2,4 +2,5 @@
 set -euo pipefail
 cd "${BASH_SOURCE[0]%/*}"/..
 PC=robotclub@robotclub-latitude.local
-ssh -t "$PC" canbusload can0@1000000
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  -t "$PC" canbusload can0@1000000
