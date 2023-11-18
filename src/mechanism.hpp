@@ -222,19 +222,18 @@ struct Mechanism {
         constexpr float max_omega = 1.5f;  // [rad/sec]
         const float max = max_omega * chrono::duration<float>{dt}.count();
         const float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
-        float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
+        const float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
         constexpr float max_distance = M_PI / 4;
-        new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
-        pid.set_target(new_tag_angle);
+        const float clamped_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
+        pid.set_target(clamped_angle);
         pid.update(present_rad, dt);
-        float anti_gravity = 1500 * std::cos(present_rad);
+        const float anti_gravity = 1500 * std::cos(present_rad);
         c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
         printf("ang:");
         printf("%1d ", l_pushed);
         printf("%6ld ", enc->get_enc() - origin);
         printf("% 4.0f ", rad_to_deg(present_rad));
         printf("% 4.0f ", rad_to_deg(target_angle));
-        // printf("% 4.0f ", rad_to_deg(new_tag_angle));
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
