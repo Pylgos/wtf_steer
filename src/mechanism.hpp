@@ -58,7 +58,7 @@ struct Mechanism {
     AwaitInterval<> timeout;
   };
   struct Expander {
-    static constexpr int enc_interval = -102500;
+    static constexpr int enc_interval = -100900;
     void task() {
       if(state == Waiting && !lim->read()) {
         // 原点合わせ
@@ -82,17 +82,21 @@ struct Mechanism {
         if(l_pushed) set_origin();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         const auto dt = dt_timer();
-        const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        constexpr float max_vel = 1.0;  // [m/s]
-        const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
-        const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
         // 目標値が現在位置より上ならlock
         const bool is_lock = target - present_length > 0;
         wait_lock_and(is_lock, [&] {
-          pid.set_target(new_tgt);
-          pid.update(present_length, dt);
-          constexpr float anti_gravity = 0.0275;
-          fp->set_duty(-anti_gravity - pid.get_output());
+          if(!std::isnan(target)) {
+            const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+            constexpr float max_vel = 1.0;  // [m/s]
+            const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
+            const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
+            pid.set_target(new_tgt);
+            pid.update(present_length, dt);
+            constexpr float anti_gravity = 0.04;
+            fp->set_duty(-anti_gravity - pid.get_output());
+          } else {
+            fp->set_duty(0);
+          }
         });
         printf("exp:");
         printf("%1d ", is_lock << 1 | l_pushed);
@@ -219,22 +223,25 @@ struct Mechanism {
         if(l_pushed) origin = enc->get_enc();
         const float present_rad = (enc->get_enc() - origin) * enc_to_rad + bottom_rad;
         const auto dt = dt_timer();
-        constexpr float max_omega = 1.5f;  // [rad/sec]
-        const float max = max_omega * chrono::duration<float>{dt}.count();
-        const float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
-        float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
-        constexpr float max_distance = M_PI / 4;
-        new_tag_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
-        pid.set_target(new_tag_angle);
-        pid.update(present_rad, dt);
-        float anti_gravity = 1500 * std::cos(present_rad);
-        c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
+        if(!std::isnan(target_angle)) {
+          constexpr float max_omega = 1.5f;  // [rad/sec]
+          const float max = max_omega * chrono::duration<float>{dt}.count();
+          const float pre_tgt = std::isnan(pid.get_target()) ? present_rad : pid.get_target();
+          const float new_tag_angle = pre_tgt + std::clamp(target_angle - pre_tgt, -max, max);
+          constexpr float max_distance = M_PI / 4;
+          const float clamped_angle = present_rad + std::clamp(new_tag_angle - present_rad, -max_distance, max_distance);
+          pid.set_target(clamped_angle);
+          pid.update(present_rad, dt);
+          const float anti_gravity = 1000 * std::cos(present_rad);
+          c620->set_raw_tgt_current(std::clamp(16384 * pid.get_output() + anti_gravity, -16384.0f, 16384.0f));
+        } else {
+          c620->set_raw_tgt_current(0);
+        }
         printf("ang:");
         printf("%1d ", l_pushed);
         printf("%6ld ", enc->get_enc() - origin);
         printf("% 4.0f ", rad_to_deg(present_rad));
         printf("% 4.0f ", rad_to_deg(target_angle));
-        // printf("% 4.0f ", rad_to_deg(new_tag_angle));
         printf("%6d ", c620->get_raw_tgt_current());
       }
     }
@@ -273,7 +280,7 @@ struct Mechanism {
     int count = 0;
   };
   struct ArmLength {
-    static constexpr int enc_interval = -6200;
+    static constexpr int enc_interval = -7000;
     static constexpr int max_length = 1000;
     static constexpr float enc_to_m = 1e-3 * max_length / enc_interval;
     void task(ArmAngle* ang) {
@@ -297,22 +304,26 @@ struct Mechanism {
         const bool l_pushed = !lim->read();
         if(l_pushed) origin = enc->get_enc();
         const float present_length = (enc->get_enc() - origin) * enc_to_m;
-        constexpr float max_vel = 1200 * 1e-3;  // [m/s]
         auto dt = dt_timer();
-        const float max = max_vel * std::chrono::duration<float>{dt}.count();
-        const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        const float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
-        pid.set_target(new_tag_length);
-        pid.update(present_length, dt);
-        const float angle = ang->get_angle();
-        const float anti_gravity = std::isnan(angle) ? 0 : 0.03 * std::sin(angle);
-        fp->set_duty(pid.get_output() + anti_gravity);
+        if(!std::isnan(target_length)) {
+          constexpr float max_vel = 1200 * 1e-3;  // [m/s]
+          const float max = max_vel * std::chrono::duration<float>{dt}.count();
+          const float pre_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+          const float new_tag_length = pre_tgt + std::clamp(target_length - pre_tgt, -max, max);
+          pid.set_target(new_tag_length);
+          pid.update(present_length, dt);
+          const float angle = ang->get_angle();
+          const float anti_gravity = std::isnan(angle) ? 0 : 0.03 * std::sin(angle);
+          fp->set_duty(pid.get_output() + anti_gravity);
+        } else {
+          fp->set_duty(0);
+        }
         printf("len:");
         printf("%1d ", l_pushed);
-        printf("%4ld ", enc->get_enc() - origin);
+        printf("%5ld ", enc->get_enc() - origin);
         printf("%4d ", (int)(present_length * 1e3));
-        printf("%4d ", (int)(new_tag_length * 1e3));
-        printf("%6d\t", fp->get_raw_duty());
+        printf("%4d ", (int)(target_length * 1e3));
+        printf("%6d ", fp->get_raw_duty());
       }
     }
     void set_target(int16_t length) {
@@ -358,8 +369,8 @@ struct Mechanism {
 
   void task() {
     donfan.task();
-    expander.task();
     collector.task();
+    expander.task();
     arm_angle.task();
     arm_length.task(&arm_angle);
     large_wheel.task();

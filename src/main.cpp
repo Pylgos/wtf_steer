@@ -52,10 +52,10 @@ ServoArray servo_array{140};
 Servo* const collector_servo = &servo_array[0];
 Servo* const expander_servo = &servo_array[1];
 
-Amt21 front_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(77.3 - 90)};
-Amt21 rear_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(19.6 + 90)};
-Amt21 rear_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(-91.5 + 270)};
-Amt21 front_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(28.6 + 90)};
+Amt21 front_left_steer_enc{&rs485, 0x50, -1.0, Anglef::from_deg(-14.9 + 1.0)};
+Amt21 rear_left_steer_enc{&rs485, 0x58, -1.0, Anglef::from_deg(-7.9 - 0.1)};
+Amt21 rear_right_steer_enc{&rs485, 0x5C, -1.0, Anglef::from_deg(-87.9 + 12.3)};
+Amt21 front_right_steer_enc{&rs485, 0x54, -1.0, Anglef::from_deg(-165.1 - 1.2)};
 std::array<Amt21*, 4> steer_encoders = {
     &front_left_steer_enc, &rear_left_steer_enc, &rear_right_steer_enc, &front_right_steer_enc};
 
@@ -223,11 +223,11 @@ int main() {
     mech.collector.collecting = collect;
   });
   controller.on_arm_angle([](int16_t angle) {
-    printf("arm_angle % 5d (% 4d)\n", angle, int(angle * 360 / (2e3 * M_PI)));
+    // printf("arm_angle % 5d (% 4d)\n", angle, int(angle * 360 / (2e3 * M_PI)));
     mech.arm_angle.set_target(angle);
   });
   controller.on_arm_length([](int16_t length) {
-    printf("arm_length %d\n", length);
+    // printf("arm_length %d\n", length);
     mech.arm_length.set_target(length);
   });
   controller.on_large_wheel([](int16_t duty) {
@@ -278,7 +278,12 @@ int main() {
 
     switch(controller.get_state()) {
       case Feedback::CurrentState::CONFIGURING: {
-        printf("CON ");
+        auto now = HighResClock::now();
+        if(now - last_c620 > 100ms) {
+          printf("EMG ");
+        } else {
+          printf("CON ");
+        }
         steer_controller.reset();
         for(size_t i = 0; i < 4; i++) {
           drive_motors[i]->set_tgt_torque(0);
