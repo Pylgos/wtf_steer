@@ -82,13 +82,13 @@ struct Mechanism {
         if(l_pushed) set_origin();
         float present_length = 1.0f / enc_interval * (enc->get_enc() - origin);
         const auto dt = dt_timer();
-        const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
-        constexpr float max_vel = 1.0;  // [m/s]
-        const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
-        const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
         // 目標値が現在位置より上ならlock
         const bool is_lock = target - present_length > 0;
         wait_lock_and(is_lock, [&] {
+          const float previous_tgt = std::isnan(pid.get_target()) ? present_length : pid.get_target();
+          constexpr float max_vel = 1.0;  // [m/s]
+          const float max_dis = max_vel * std::chrono::duration<float>{dt}.count();
+          const float new_tgt = previous_tgt + std::clamp(target - previous_tgt, -max_dis, max_dis);
           pid.set_target(new_tgt);
           pid.update(present_length, dt);
           constexpr float anti_gravity = 0.04;
